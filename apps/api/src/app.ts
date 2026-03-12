@@ -175,13 +175,23 @@ app.use(errorMiddleware);
 // ── Start Server ──────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env['PORT'] ?? '4000', 10);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[API] Server running on http://localhost:${PORT}`);
   console.log(`[API] Environment: ${process.env['NODE_ENV'] ?? 'development'}`);
 
   if (process.env['NODE_ENV'] === 'production') {
     startNotificationJobs();
   }
+});
+
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`[API] Error: El puerto ${PORT} ya está en uso.`);
+    console.error(`[API] Solución: detén el proceso que usa el puerto ${PORT} y vuelve a iniciar.`);
+  } else {
+    console.error('[API] Error al iniciar el servidor:', error.message);
+  }
+  process.exit(1);
 });
 
 export default app;
