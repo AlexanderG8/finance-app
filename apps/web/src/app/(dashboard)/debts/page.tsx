@@ -48,7 +48,7 @@ export default function DebtsPage() {
   const [payingDebt, setPayingDebt] = useState<PersonalDebt | undefined>(undefined);
 
   // Load all debts for stats (no status filter)
-  const { debts: allDebts } = useDebts({ limit: 200 });
+  const { debts: allDebts, refetch: refetchAll } = useDebts({ limit: 100 });
 
   // Load filtered debts for list
   const { deleteDebt } = useDeleteDebt();
@@ -88,6 +88,7 @@ export default function DebtsPage() {
 
   function handleSuccess() {
     refetch();
+    refetchAll();
     setPage(1);
   }
 

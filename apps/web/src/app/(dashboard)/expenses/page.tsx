@@ -56,7 +56,7 @@ export default function ExpensesPage() {
     limit: ITEMS_PER_PAGE,
   });
 
-  const { summary, isLoading: summaryLoading } = useMonthlySummary(month, year);
+  const { summary, isLoading: summaryLoading, refetch: refetchSummary } = useMonthlySummary(month, year);
   const { comparison, isLoading: comparisonLoading, refetch: refetchComparison } = useBudgetComparison(month, year);
 
   const deleteExpense = useDeleteExpense();
@@ -102,6 +102,8 @@ export default function ExpensesPage() {
 
   const handleExpenseSuccess = () => {
     refetch();
+    refetchSummary();
+    refetchComparison();
   };
 
   return (

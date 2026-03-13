@@ -32,6 +32,7 @@ interface UseMonthlySummaryResult {
   summary: MonthlySummary | null;
   isLoading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 interface UseExpenseResult {
@@ -124,6 +125,9 @@ export function useMonthlySummary(month: number, year: number): UseMonthlySummar
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+
+  const refetch = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
     async function fetchSummary() {
@@ -143,9 +147,9 @@ export function useMonthlySummary(month: number, year: number): UseMonthlySummar
     }
 
     fetchSummary();
-  }, [month, year]);
+  }, [month, year, tick]);
 
-  return { summary, isLoading, error };
+  return { summary, isLoading, error, refetch };
 }
 
 export function useExpense(id: string): UseExpenseResult {
