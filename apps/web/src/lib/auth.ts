@@ -46,3 +46,11 @@ export async function refreshTokenRequest(refreshToken: string): Promise<{ acces
   );
   return response.data.data;
 }
+
+export async function forgotPasswordRequest(email: string): Promise<void> {
+  await apiClient.post('/auth/forgot-password', { email });
+}
+
+export async function resetPasswordRequest(token: string, password: string): Promise<void> {
+  await apiClient.post('/auth/reset-password', { token, password });
+}

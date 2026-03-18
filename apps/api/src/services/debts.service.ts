@@ -59,7 +59,7 @@ export async function createDebt(userId: string, input: CreateDebtInput) {
 export async function getDebtById(userId: string, debtId: string) {
   const debt = await prisma.personalDebt.findFirst({
     where: { id: debtId, userId },
-    include: { payments: true },
+    include: { payments: { orderBy: { paidAt: 'desc' } } },
   });
 
   if (!debt) {

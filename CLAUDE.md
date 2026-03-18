@@ -30,13 +30,14 @@
 ### Módulos del sistema:
 | # | Módulo | Descripción |
 |---|--------|-------------|
-| 1 | **Auth** | Login/registro con JWT |
+| 1 | **Auth** | Login/registro con JWT + recuperación de contraseña por email |
 | 2 | **Gastos** | Registro de gastos con categorías y presupuesto |
 | 3 | **Préstamos** | Préstamos otorgados con cuotas e intereses |
-| 4 | **Deudas** | Deudas personales del usuario |
+| 4 | **Deudas** | Deudas personales con historial de pagos |
 | 5 | **Ahorros** | Metas de ahorro con progreso y proyección |
-| 6 | **Dashboard** | Resumen financiero general |
-| 7 | **Notificaciones** | Alertas por email (Fase 1) |
+| 6 | **Ingresos** | Registro de ingresos por fuente con resumen mensual |
+| 7 | **Dashboard** | Resumen financiero con balance real (ingresos − gastos − pagos de deudas) |
+| 8 | **Notificaciones** | Alertas por email (Fase 1) |
 
 ---
 
@@ -312,26 +313,38 @@ enum SavingGoalStatus {
   PAUSED
 }
 
+enum IncomeSource {
+  SALARY
+  FREELANCE
+  BUSINESS
+  INVESTMENT
+  RENTAL
+  OTHER
+}
+
 // ─── MODELOS ─────────────────────────────────────────────────────────────────
 
 model User {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  passwordHash      String
-  name              String
-  avatarUrl         String?
-  preferredCurrency Currency @default(PEN)
-  timezone          String   @default("America/Lima")
-  emailVerified     Boolean  @default(false)
-  refreshToken      String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  passwordHash           String
+  name                   String
+  avatarUrl              String?
+  preferredCurrency      Currency  @default(PEN)
+  timezone               String    @default("America/Lima")
+  emailVerified          Boolean   @default(false)
+  refreshToken           String?
+  resetPasswordToken     String?
+  resetPasswordExpires   DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   expenses          Expense[]
   budgets           Budget[]
   loans             Loan[]
   personalDebts     PersonalDebt[]
   savingGoals       SavingGoal[]
+  incomes           Income[]
 
   @@map("users")
 }
@@ -499,17 +512,36 @@ model SavingGoal {
 }
 
 model SavingContribution {
-  id          String        @id @default(cuid())
-  goalId      String
-  amount      Decimal       @db.Decimal(12, 2)
+  id            String        @id @default(cuid())
+  goalId        String
+  amount        Decimal       @db.Decimal(12, 2)
   paymentMethod PaymentMethod
   contributedAt DateTime
-  notes       String?
-  createdAt   DateTime      @default(now())
+  notes         String?
+  createdAt     DateTime      @default(now())
 
-  goal        SavingGoal    @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  goal SavingGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
 
   @@map("saving_contributions")
+}
+
+model Income {
+  id            String        @id @default(cuid())
+  userId        String
+  description   String
+  amount        Decimal       @db.Decimal(12, 2)
+  currency      Currency      @default(PEN)
+  source        IncomeSource  @default(OTHER)
+  paymentMethod PaymentMethod
+  date          DateTime
+  isRecurring   Boolean       @default(false)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("incomes")
 }
 ```
 
@@ -756,10 +788,25 @@ GET    /:id/projection     → Proyección de fecha de cumplimiento
 DELETE /:id                → Eliminar meta
 ```
 
+### Ingresos — `/api/v1/incomes` [AUTH en todos]
+```
+GET    /                   → Listar (query: month, year, source, page, limit)
+POST   /                   → Crear ingreso
+GET    /summary            → Resumen mensual por fuente (query: month, year)
+GET    /:id                → Detalle
+PUT    /:id                → Actualizar
+DELETE /:id                → Eliminar
+```
+
 ### Dashboard — `/api/v1/dashboard` [AUTH en todos]
 ```
-GET    /summary            → Resumen general (gastos mes, préstamos, ahorros, deudas)
-GET    /upcoming-payments  → Próximos vencimientos (loans + debts)
+GET    /summary            → Resumen general:
+                             - expenses: total + byCategory del mes
+                             - income: total + bySource del mes
+                             - debtPayments: total pagos a deudas del mes (por paidAt)
+                             - balance: income.total − expenses.total − debtPayments.total
+                             - loans, debts, savings
+GET    /upcoming-payments  → Próximos vencimientos (loans + debts, próximos 7 días)
 ```
 
 ---
@@ -1008,23 +1055,75 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 [ ] 4.4 UI: Progreso visual de metas
 ```
 
-### Sprint 5 — Dashboard y Notificaciones (Semana 8-9)
+### Sprint 5 — Dashboard y Notificaciones (Semana 8-9) ✅ COMPLETADO
 ```
-[ ] 5.1 Endpoint de resumen del dashboard
-[ ] 5.2 UI: Cards del dashboard con datos reales
-[ ] 5.3 Gráficas con Recharts (gastos por categoría)
-[ ] 5.4 Configurar Nodemailer
-[ ] 5.5 Implementar cron jobs de notificaciones
-[ ] 5.6 Templates de emails
+[x] 5.1 Endpoint de resumen del dashboard
+[x] 5.2 UI: Cards del dashboard con datos reales
+[x] 5.3 Gráficas con Recharts (gastos por categoría)
+[x] 5.4 Configurar Nodemailer
+[x] 5.5 Implementar cron jobs de notificaciones
+[x] 5.6 Templates de emails
 ```
 
-### Sprint 6 — QA y Deploy (Semana 10)
+### Sprint 6 — Ingresos y Balance Financiero ✅ COMPLETADO
 ```
-[ ] 6.1 Revisar y completar tests unitarios
-[ ] 6.2 Deploy API en Railway
-[ ] 6.3 Deploy Web en Vercel
-[ ] 6.4 Configurar variables de entorno en producción
-[ ] 6.5 Smoke testing en producción
+[x] 6.1 Agregar enum IncomeSource y modelo Income al schema Prisma
+[x] 6.2 Migración de BD (add_income)
+[x] 6.3 Schema Zod income.schema.ts
+[x] 6.4 income.service.ts (CRUD + resumen mensual por fuente)
+[x] 6.5 income.controller.ts + income.routes.ts
+[x] 6.6 Actualizar dashboard/summary: income.total, income.bySource, balance
+[x] 6.7 Tipos compartidos Income en packages/shared
+[x] 6.8 Hook useIncomes.ts
+[x] 6.9 Página /incomes con listado, filtros por mes/fuente, paginación
+[x] 6.10 IncomeFormModal (crear/editar), IncomeCard, IncomeSummaryCard
+[x] 6.11 Sidebar: ítem "Ingresos" con ícono TrendingUp
+[x] 6.12 Dashboard: card Ingresos del mes + BalanceBarChart (ingresos vs gastos)
+```
+
+### Sprint 7 — Detalle de Deuda con Historial de Pagos ✅ COMPLETADO
+```
+[x] 7.1 Página /debts/[id]/page.tsx con resumen de deuda y listado de pagos
+[x] 7.2 Usar modelo debt_payments existente (NO se creó DebtInstallment)
+[x] 7.3 Botón "Ver pagos" (ícono Eye) en DebtCard → navega a /debts/:id
+[x] 7.4 getDebtById incluye payments[] ordenados por paidAt desc
+```
+
+### Sprint 8 — Forgot / Reset Password ✅ COMPLETADO
+```
+[x] 8.1 Campos resetPasswordToken y resetPasswordExpires en modelo User
+[x] 8.2 Migración de BD (add_reset_password_fields)
+[x] 8.3 forgotPassword: crypto.randomBytes(32) + SHA-256 hash en DB, expira 1h
+[x] 8.4 resetPassword: verifica hash + expiración, actualiza password, limpia token
+[x] 8.5 sendPasswordResetSuccessEmail en mailer.ts
+[x] 8.6 Rutas POST /auth/forgot-password y POST /auth/reset-password
+[x] 8.7 forgotPasswordRequest y resetPasswordRequest en apps/web/src/lib/auth.ts
+[x] 8.8 Página /forgot-password (form email + estado de éxito genérico)
+[x] 8.9 Página /reset-password (lee ?token, form nueva contraseña, redirect a login)
+```
+
+### Sprint 9 — Balance Real del Dashboard ✅ COMPLETADO
+```
+[x] 9.1 Dashboard /summary: agregar aggregate de DebtPayment del mes por paidAt
+[x] 9.2 Fórmula: balance = income.total − expenses.total − debtPaymentsTotal
+[x] 9.3 Respuesta incluye debtPayments: { total }
+[x] 9.4 DashboardSummary tipo actualizado con debtPayments: { total: number }
+[x] 9.5 BalanceBarChart: nueva prop debtPayments, tercera barra ámbar (#F4A261)
+[x] 9.6 Desglose textual debajo del gráfico: Ingresos / Gastos / Pagos de deudas / Balance
+```
+
+### Sprint 10 — Inteligencia Artificial (A FUTURO)
+```
+[ ] 
+```
+
+### Sprint 11 — QA y Deploy (Pendiente)
+```
+[ ] 11.1 Revisar y completar tests unitarios
+[ ] 11.2 Deploy API en Railway
+[ ] 11.3 Deploy Web en Vercel
+[ ] 11.4 Configurar variables de entorno en producción
+[ ] 11.5 Smoke testing en producción
 ```
 
 ---

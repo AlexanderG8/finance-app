@@ -89,6 +89,7 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
       message: 'Contraseña restablecida exitosamente.',
     });
   } catch (error) {
+    console.log(error);
     next(error);
   }
 }

@@ -13,6 +13,12 @@ interface DashboardSummary {
       count: number;
     }>;
   };
+  income: {
+    total: number;
+    bySource: Array<{ source: string; total: number; count: number }>;
+  };
+  debtPayments: { total: number };
+  balance: number;
   loans: {
     totalLent: number;
     totalCollected: number;

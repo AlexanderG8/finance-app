@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 
 const navigationItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/incomes', label: 'Ingresos', icon: TrendingUp },
   { href: '/expenses', label: 'Gastos', icon: Receipt },
   { href: '/loans', label: 'Préstamos', icon: Users },
   { href: '/debts', label: 'Deudas', icon: CreditCard },

@@ -16,6 +16,7 @@ import { useDashboard, useUpcomingPayments } from '@/hooks/useDashboard';
 import { ExpensesPieChart } from '@/components/dashboard/ExpensesPieChart';
 import { UpcomingPayments } from '@/components/dashboard/UpcomingPayments';
 import { LoanStatusBar } from '@/components/dashboard/LoanStatusBar';
+import { BalanceBarChart } from '@/components/dashboard/BalanceBarChart';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -65,6 +66,14 @@ export default function DashboardPage() {
   const statCards: StatCard[] = data
     ? [
         {
+          title: 'Ingresos del mes',
+          value: formatCurrency(data.income.total),
+          subtitle: `${data.currentMonth.month}/${data.currentMonth.year}`,
+          icon: TrendingUp,
+          iconColor: 'text-[#28A745]',
+          iconBg: 'bg-green-50',
+        },
+        {
           title: 'Gastos del mes',
           value: formatCurrency(data.expenses.total),
           subtitle: `${data.currentMonth.month}/${data.currentMonth.year}`,
@@ -101,6 +110,7 @@ export default function DashboardPage() {
 
   const isAllEmpty =
     data &&
+    data.income.total === 0 &&
     data.expenses.total === 0 &&
     data.loans.totalLent === 0 &&
     data.debts.totalPending === 0 &&
@@ -122,10 +132,10 @@ export default function DashboardPage() {
           variants={containerVariants}
           initial="initial"
           animate="animate"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
         >
           {isLoading
-            ? Array.from({ length: 4 }).map((_, i) => <SummaryCardSkeleton key={i} />)
+            ? Array.from({ length: 5 }).map((_, i) => <SummaryCardSkeleton key={i} />)
             : statCards.map((card, index) => {
                 const Icon = card.icon;
                 return (
@@ -149,19 +159,35 @@ export default function DashboardPage() {
               })}
         </motion.div>
 
-        {/* ── Section 2: PieChart + Upcoming Payments ── */}
+        {/* ── Section 2: Balance + PieChart + Upcoming Payments ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
           className="grid grid-cols-1 gap-6 lg:grid-cols-2"
         >
+          <BalanceBarChart
+            income={data?.income.total ?? 0}
+            expenses={data?.expenses.total ?? 0}
+            debtPayments={data?.debtPayments.total ?? 0}
+            balance={data?.balance ?? 0}
+            month={data?.currentMonth.month ?? new Date().getMonth() + 1}
+            year={data?.currentMonth.year ?? new Date().getFullYear()}
+            isLoading={isLoading}
+          />
+
           <ExpensesPieChart
             byCategory={data?.expenses.byCategory ?? []}
             totalExpenses={data?.expenses.total ?? 0}
             isLoading={isLoading}
           />
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
           <UpcomingPayments
             loanInstallments={upcomingData?.loanInstallments ?? []}
             debts={upcomingData?.debts ?? []}

@@ -108,7 +108,27 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
   });
 }
 
-// ─── 3. Installment reminder (3 days before) ─────────────────────────────────
+// ─── 3. Password reset success ───────────────────────────────────────────────
+
+export async function sendPasswordResetSuccessEmail(email: string, name: string): Promise<void> {
+  await sendMail({
+    to: email,
+    subject: 'Contraseña restablecida — Personal Finance App',
+    html: emailWrapper(`
+      <h1 style="color: #28A745; margin-top: 0;">✅ Contraseña actualizada</h1>
+      <p style="color: #475569;">Hola <strong>${name}</strong>,</p>
+      <p style="color: #475569;">Tu contraseña ha sido restablecida exitosamente.</p>
+      <p style="color: #475569;">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+      <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 24px 0;" />
+      <p style="color: #94A3B8; font-size: 13px;">
+        Si no realizaste este cambio, contacta al soporte de inmediato.
+      </p>
+    `),
+    text: `Hola ${name}, tu contraseña ha sido restablecida exitosamente.`,
+  });
+}
+
+// ─── 4. Installment reminder (3 days before) ─────────────────────────────────
 
 export async function sendInstallmentReminderEmail(
   email: string,

@@ -244,3 +244,4 @@ export function useDeleteDebt(): UseDeleteDebtResult {
 
   return { deleteDebt, isLoading, error };
 }
+

@@ -53,6 +53,15 @@ enum SavingGoalStatus {
   PAUSED
 }
 
+enum IncomeSource {
+  SALARY
+  FREELANCE
+  BUSINESS
+  INVESTMENT
+  RENTAL
+  OTHER
+}
+
 // ─── MODELOS ─────────────────────────────────────────────────────────────────
 
 model User {
@@ -63,9 +72,11 @@ model User {
   avatarUrl         String?
   preferredCurrency Currency @default(PEN)
   timezone          String   @default("America/Lima")
-  emailVerified     Boolean  @default(false)
-  refreshToken      String?
-  createdAt         DateTime @default(now())
+  emailVerified          Boolean   @default(false)
+  refreshToken           String?
+  resetPasswordToken     String?
+  resetPasswordExpires   DateTime?
+  createdAt              DateTime  @default(now())
   updatedAt         DateTime @updatedAt
 
   expenses      Expense[]
@@ -73,6 +84,7 @@ model User {
   loans         Loan[]
   personalDebts PersonalDebt[]
   savingGoals   SavingGoal[]
+  incomes       Income[]
 
   @@map("users")
 }
@@ -198,8 +210,8 @@ model PersonalDebt {
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments DebtPayment[]
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments     DebtPayment[]
 
   @@map("personal_debts")
 }
@@ -237,6 +249,25 @@ model SavingGoal {
   contributions SavingContribution[]
 
   @@map("saving_goals")
+}
+
+model Income {
+  id            String        @id @default(cuid())
+  userId        String
+  description   String
+  amount        Decimal       @db.Decimal(12, 2)
+  currency      Currency      @default(PEN)
+  source        IncomeSource  @default(OTHER)
+  paymentMethod PaymentMethod
+  date          DateTime
+  isRecurring   Boolean       @default(false)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("incomes")
 }
 
 model SavingContribution {

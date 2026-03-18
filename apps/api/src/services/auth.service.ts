@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
+import { randomBytes, createHash } from 'crypto';
 import { prisma } from '../lib/prisma';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../lib/jwt';
-import { sendWelcomeEmail, sendPasswordResetEmail } from '../lib/mailer';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendPasswordResetSuccessEmail } from '../lib/mailer';
 import type {
   RegisterInput,
   LoginInput,
@@ -190,24 +191,54 @@ export async function forgotPassword(email: string): Promise<void> {
   // Always return success to avoid email enumeration
   if (!user) return;
 
-  // In production, store the token in DB with expiry
-  // For now, generate a simple token
-  const resetToken = generateAccessToken({ userId: user.id, email: user.email });
+  const rawToken = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: expires,
+    },
+  });
+
   const appUrl = process.env['APP_URL'] ?? 'http://localhost:3000';
-  const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+  const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
   await sendPasswordResetEmail(email, resetUrl);
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
-  const { verifyAccessToken } = await import('../lib/jwt');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
 
-  const payload = verifyAccessToken(token);
+  const user = await prisma.user.findFirst({
+    where: {
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { gt: new Date() },
+    },
+  });
+
+  if (!user) {
+    const error = new Error('El token es inválido o ha expirado.') as Error & { statusCode: number };
+    error.statusCode = 400;
+    throw error;
+  }
 
   const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
   await prisma.user.update({
-    where: { id: payload.userId },
-    data: { passwordHash, refreshToken: null },
+    where: { id: user.id },
+    data: {
+      passwordHash,
+      refreshToken: null,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    },
+  });
+
+  // Send confirmation email (non-blocking)
+  sendPasswordResetSuccessEmail(user.email, user.name).catch((err) => {
+    console.error('Failed to send password reset success email:', err);
   });
 }

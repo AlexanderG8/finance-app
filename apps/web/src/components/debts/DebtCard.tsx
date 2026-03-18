@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, CreditCard, Trash2, Edit, DollarSign } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Calendar, CreditCard, Trash2, Edit, DollarSign, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -26,6 +27,7 @@ interface DebtCardProps {
 
 export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const router = useRouter();
 
   const progressPercent =
     debt.totalAmount > 0
@@ -144,6 +146,15 @@ export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
             </>
           ) : (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/debts/${debt.id}`)}
+                className="gap-1 text-xs text-[#2E86AB] border-[#2E86AB] hover:bg-blue-50"
+              >
+                <Eye className="h-3 w-3" />
+                Ver pagos
+              </Button>
               {debt.status !== 'PAID' && (
                 <Button
                   size="sm"

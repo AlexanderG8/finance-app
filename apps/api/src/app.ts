@@ -9,6 +9,7 @@ import expensesRoutes from './routes/expenses.routes';
 import loansRoutes from './routes/loans.routes';
 import debtsRoutes from './routes/debts.routes';
 import savingsRoutes from './routes/savings.routes';
+import incomeRoutes from './routes/income.routes';
 import { authMiddleware } from './middlewares/auth.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { startNotificationJobs } from './jobs/notification.job';
@@ -36,8 +37,9 @@ import * as loansService from './services/loans.service';
 import * as expensesService from './services/expenses.service';
 import * as debtsService from './services/debts.service';
 import * as savingsService from './services/savings.service';
+import * as incomeService from './services/income.service';
 import { Request, Response, NextFunction } from 'express';
-import { addDays } from 'date-fns';
+import { addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { prisma } from './lib/prisma';
 
 dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFunction) => {
@@ -45,12 +47,22 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
 
-    const [loanSummary, monthlySummary, debtsList, savingGoals] = await Promise.all([
+    const [loanSummary, monthlySummary, incomeSummary, debtsList, savingGoals, debtPaymentsAggregate] = await Promise.all([
       loansService.getLoanSummary(req.user.id),
       expensesService.getMonthlySummary(req.user.id, month, year),
+      incomeService.getMonthlyIncomeSummary(req.user.id, month, year),
       debtsService.listDebts(req.user.id, { page: 1, limit: 100 }),
       savingsService.listSavingGoals(req.user.id),
+      prisma.debtPayment.aggregate({
+        where: {
+          debt: { userId: req.user.id },
+          paidAt: { gte: monthStart, lte: monthEnd },
+        },
+        _sum: { amount: true },
+      }),
     ]);
 
     const totalDebts = debtsList.data.reduce(
@@ -61,6 +73,7 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
       (sum: number, g: { currentAmount: number }) => sum + g.currentAmount,
       0
     );
+    const debtPaymentsTotal = Number(debtPaymentsAggregate._sum.amount ?? 0);
 
     res.status(200).json({
       success: true,
@@ -70,6 +83,12 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
           total: monthlySummary.totalAmount,
           byCategory: monthlySummary.byCategory,
         },
+        income: {
+          total: incomeSummary.totalAmount,
+          bySource: incomeSummary.bySource,
+        },
+        debtPayments: { total: debtPaymentsTotal },
+        balance: incomeSummary.totalAmount - monthlySummary.totalAmount - debtPaymentsTotal,
         loans: loanSummary,
         debts: { totalPending: totalDebts },
         savings: { totalSaved: totalSavings, goalsCount: savingGoals.length },
@@ -162,6 +181,7 @@ app.use('/api/v1/budgets', budgetsRouter);
 app.use('/api/v1/loans', loansRoutes);
 app.use('/api/v1/debts', debtsRoutes);
 app.use('/api/v1/savings', savingsRoutes);
+app.use('/api/v1/incomes', incomeRoutes);
 app.use('/api/v1/dashboard', dashboardRouter);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
