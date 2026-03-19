@@ -1016,43 +1016,43 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 
 ### Sprint 1 — Fundamentos (Semana 1-2)
 ```
-[ ] 1.1 Inicializar monorepo con Turborepo
-[ ] 1.2 Crear apps/api con Express + TypeScript
-[ ] 1.3 Configurar Prisma + NeonDB + schema completo
-[ ] 1.4 Ejecutar migración inicial
-[ ] 1.5 Crear apps/web con Next.js 14 + TypeScript
-[ ] 1.6 Configurar TailwindCSS + shadcn/ui
-[ ] 1.7 Implementar Auth completo (backend + frontend)
-[ ] 1.8 Crear layout del dashboard con sidebar
-[ ] 1.9 Seed de categorías de gastos
+[x] 1.1 Inicializar monorepo con Turborepo
+[x] 1.2 Crear apps/api con Express + TypeScript
+[x] 1.3 Configurar Prisma + NeonDB + schema completo
+[x] 1.4 Ejecutar migración inicial
+[x] 1.5 Crear apps/web con Next.js 14 + TypeScript
+[x] 1.6 Configurar TailwindCSS + shadcn/ui
+[x] 1.7 Implementar Auth completo (backend + frontend)
+[x] 1.8 Crear layout del dashboard con sidebar
+[x] 1.9 Seed de categorías de gastos
 ```
 
 ### Sprint 2 — Gastos (Semana 3-4)
 ```
-[ ] 2.1 CRUD de gastos (backend)
-[ ] 2.2 Schemas Zod de gastos
-[ ] 2.3 UI: Listado de gastos con filtros
-[ ] 2.4 UI: Modal de crear/editar gasto
-[ ] 2.5 CRUD de presupuestos (backend + frontend)
-[ ] 2.6 Resumen mensual por categoría
+[x] 2.1 CRUD de gastos (backend)
+[x] 2.2 Schemas Zod de gastos
+[x] 2.3 UI: Listado de gastos con filtros
+[x] 2.4 UI: Modal de crear/editar gasto
+[x] 2.5 CRUD de presupuestos (backend + frontend)
+[x] 2.6 Resumen mensual por categoría
 ```
 
 ### Sprint 3 — Préstamos (Semana 5-6)
 ```
-[ ] 3.1 Implementar loan-calculator.ts con tests
-[ ] 3.2 CRUD de préstamos (backend)
-[ ] 3.3 Endpoint de registro de pago de cuota
-[ ] 3.4 UI: Listado de préstamos con estados
-[ ] 3.5 UI: Detalle de préstamo con cronograma de cuotas
-[ ] 3.6 UI: Modal de registro de pago
+[x] 3.1 Implementar loan-calculator.ts con tests
+[x] 3.2 CRUD de préstamos (backend)
+[x] 3.3 Endpoint de registro de pago de cuota
+[x] 3.4 UI: Listado de préstamos con estados
+[x] 3.5 UI: Detalle de préstamo con cronograma de cuotas
+[x] 3.6 UI: Modal de registro de pago
 ```
 
 ### Sprint 4 — Deudas y Ahorros (Semana 7)
 ```
-[ ] 4.1 CRUD de deudas (backend + frontend)
-[ ] 4.2 CRUD de metas de ahorro (backend + frontend)
-[ ] 4.3 Lógica de proyección de ahorros
-[ ] 4.4 UI: Progreso visual de metas
+[x] 4.1 CRUD de deudas (backend + frontend)
+[x] 4.2 CRUD de metas de ahorro (backend + frontend)
+[x] 4.3 Lógica de proyección de ahorros
+[x] 4.4 UI: Progreso visual de metas
 ```
 
 ### Sprint 5 — Dashboard y Notificaciones (Semana 8-9) ✅ COMPLETADO

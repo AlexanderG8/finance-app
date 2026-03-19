@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   TrendingUp,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -20,13 +21,14 @@ import { getInitials } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 const navigationItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/incomes', label: 'Ingresos', icon: TrendingUp },
-  { href: '/expenses', label: 'Gastos', icon: Receipt },
-  { href: '/loans', label: 'Préstamos', icon: Users },
-  { href: '/debts', label: 'Deudas', icon: CreditCard },
-  { href: '/savings', label: 'Ahorros', icon: PiggyBank },
-  { href: '/settings', label: 'Configuración', icon: Settings },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard, badge: null },
+  { href: '/incomes', label: 'Ingresos', icon: TrendingUp, badge: null },
+  { href: '/expenses', label: 'Gastos', icon: Receipt, badge: null },
+  { href: '/loans', label: 'Préstamos', icon: Users, badge: null },
+  { href: '/debts', label: 'Deudas', icon: CreditCard, badge: null },
+  { href: '/savings', label: 'Ahorros', icon: PiggyBank, badge: null },
+  { href: '/ai-chat', label: 'Asistente IA', icon: Bot, badge: 'IA' },
+  { href: '/settings', label: 'Configuración', icon: Settings, badge: null },
 ];
 
 export function Sidebar() {
@@ -74,7 +76,15 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className={cn(
+                      'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#2E86AB] text-white'
+                    )}>
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
