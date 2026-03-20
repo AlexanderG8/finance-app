@@ -42,6 +42,8 @@ interface BudgetFormModalProps {
   onSuccess: () => void;
   defaultMonth: number;
   defaultYear: number;
+  defaultCategoryName?: string;
+  defaultAmount?: number;
 }
 
 export function BudgetFormModal({
@@ -50,6 +52,8 @@ export function BudgetFormModal({
   onSuccess,
   defaultMonth,
   defaultYear,
+  defaultCategoryName,
+  defaultAmount,
 }: BudgetFormModalProps) {
   const { categories } = useCategories();
   const { isLoading, error, execute } = useUpsertBudget();
@@ -73,15 +77,18 @@ export function BudgetFormModal({
 
   useEffect(() => {
     if (open) {
+      const preselectedId = defaultCategoryName
+        ? (categories.find((c) => c.name.toLowerCase() === defaultCategoryName.toLowerCase())?.id ?? '')
+        : '';
       reset({
-        categoryId: '',
-        amount: 0,
+        categoryId: preselectedId,
+        amount: defaultAmount ?? 0,
         currency: 'PEN',
         month: defaultMonth,
         year: defaultYear,
       });
     }
-  }, [open, defaultMonth, defaultYear, reset]);
+  }, [open, defaultMonth, defaultYear, defaultCategoryName, defaultAmount, categories, reset]);
 
   const onSubmit = async (values: BudgetFormValues) => {
     const result = await execute(values);

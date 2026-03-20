@@ -14,6 +14,7 @@ import { ExpenseFormModal } from '@/components/expenses/ExpenseFormModal';
 import { MonthlySummaryChart } from '@/components/expenses/MonthlySummaryChart';
 import { BudgetProgress } from '@/components/expenses/BudgetProgress';
 import { BudgetFormModal } from '@/components/expenses/BudgetFormModal';
+import { AIBudgetRecommendationsButton } from '@/components/expenses/AIBudgetRecommendations';
 import { useExpenses, useMonthlySummary, useDeleteExpense } from '@/hooks/useExpenses';
 import { useBudgetComparison } from '@/hooks/useBudgets';
 import type { Expense } from '@finance-app/shared';
@@ -46,6 +47,8 @@ export default function ExpensesPage() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [aiCategoryName, setAiCategoryName] = useState<string | undefined>(undefined);
+  const [aiAmount, setAiAmount] = useState<number | undefined>(undefined);
 
   const { expenses, pagination, isLoading, refetch } = useExpenses({
     month,
@@ -104,6 +107,18 @@ export default function ExpensesPage() {
     refetch();
     refetchSummary();
     refetchComparison();
+  };
+
+  const handleAIRecommendationApply = (categoryName: string, amount: number) => {
+    setAiCategoryName(categoryName);
+    setAiAmount(amount);
+    setBudgetModalOpen(true);
+  };
+
+  const handleBudgetModalClose = () => {
+    setBudgetModalOpen(false);
+    setAiCategoryName(undefined);
+    setAiAmount(undefined);
   };
 
   return (
@@ -259,15 +274,18 @@ export default function ExpensesPage() {
                   })}
                 </span>
               </p>
-              <Button
-                onClick={() => setBudgetModalOpen(true)}
-                variant="outline"
-                size="sm"
-                className="gap-2 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F] hover:text-white"
-              >
-                <Plus className="h-4 w-4" />
-                Agregar presupuesto
-              </Button>
+              <div className="flex items-center gap-2">
+                <AIBudgetRecommendationsButton onApply={handleAIRecommendationApply} />
+                <Button
+                  onClick={() => { setAiCategoryName(undefined); setAiAmount(undefined); setBudgetModalOpen(true); }}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F] hover:text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                  Agregar presupuesto
+                </Button>
+              </div>
             </div>
 
             {comparisonLoading ? (
@@ -333,10 +351,12 @@ export default function ExpensesPage() {
 
       <BudgetFormModal
         open={budgetModalOpen}
-        onClose={() => setBudgetModalOpen(false)}
-        onSuccess={() => refetchComparison()}
+        onClose={handleBudgetModalClose}
+        onSuccess={() => { refetchComparison(); handleBudgetModalClose(); }}
         defaultMonth={month}
         defaultYear={year}
+        defaultCategoryName={aiCategoryName}
+        defaultAmount={aiAmount}
       />
     </motion.div>
   );

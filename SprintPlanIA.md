@@ -135,7 +135,7 @@ Variable de entorno nueva en apps/web/.env.local:
     - Deudas pendientes → `GET /api/v1/debts?status=PENDING&limit=10`
     - Metas de ahorro activas → `GET /api/v1/savings`
   - Construye el system prompt con el contexto (ver sección 10A.5)
-  - Llama `streamText()` con `google('gemini-2.0-flash')`
+  - Llama `streamText()` con `google('gemini-3.1-flash-lite-preview')`
   - Al completarse, guarda los mensajes → `POST /api/v1/chat/messages`
   - Retorna `result.toDataStreamResponse()`
 
@@ -233,7 +233,7 @@ REGLAS:
   - `POST { month, year, lang? }` — `lang` opcional, por defecto `'es'`
   - Autenticación obligatoria
   - Obtiene gastos por categoría, ingresos y balance del mes indicado desde Express
-  - Llama `generateText()` con `google('gemini-2.0-flash')`
+  - Llama `generateText()` con `gemini-3.1-flash-lite-preview')`
   - Prompt: "Genera un resumen ejecutivo en 3-4 oraciones del mes financiero. Responde en el idioma: {lang}."
   - Devuelve `{ summary: string }`
 
@@ -244,29 +244,7 @@ REGLAS:
   - Skeleton mientras procesa, texto generado cuando termina
   - El resumen no se guarda en BD; el usuario lo regenera cuando quiere
 
-### 10B.2 — Auto-categorización de Gastos
-
-- [ ] Crear `apps/web/src/app/api/ai/suggest-category/route.ts`:
-  - `POST { description: string }`
-  - Autenticación obligatoria
-  - Obtiene lista de categorías disponibles desde Express `GET /api/v1/categories`
-  - Llama `generateObject()` con schema Zod:
-    ```typescript
-    z.object({
-      categoryName: z.string(),
-      confidence: z.number().min(0).max(1),
-    })
-    ```
-  - Prompt: "Given this expense description and the available categories list, choose the most appropriate category."
-  - Devuelve `{ categoryName: string, confidence: number }`
-
-- [ ] Integrar en `ExpenseFormModal.tsx`:
-  - `onBlur` en el campo `description` (mínimo 3 caracteres) → debounce 500ms → llama al endpoint
-  - Si `confidence >= 0.7` → pre-selecciona la categoría en el `<Select>`
-  - Badge `"✨ Sugerido por IA"` debajo del selector (desaparece si el usuario cambia manualmente)
-  - El usuario puede ignorarlo y elegir otra categoría sin restricción
-
-### 10B.3 — Recomendaciones de Presupuesto
+### 10B.2 — Recomendaciones de Presupuesto
 
 - [ ] Crear `apps/web/src/app/api/ai/budget-recommendations/route.ts`:
   - Autenticación obligatoria
@@ -449,7 +427,7 @@ GOOGLE_GENERATIVE_AI_API_KEY="tu-api-key-de-google-ai-studio"
 | **10B** | Resumen mensual narrativo, auto-categorización, recomendaciones de presupuesto | No | — |
 | **10C** | Estrategia de deudas, asesor de ahorros, detección de anomalías | No | — |
 
-**Modelo:** `gemini-2.0-flash` en todos los endpoints.
+**Modelo:** `gemini-3.1-flash-lite-preview` en todos los endpoints.
 **Idioma:** Multilingüe — Gemini detecta el idioma del mensaje del usuario y responde en el mismo.
 **Rate limiting IA:** Sin límite (revisable en producción).
 **Historial:** Persiste en BD, últimos 50 mensajes por usuario, limpiable por el usuario.
