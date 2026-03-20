@@ -223,7 +223,7 @@ REGLAS:
 
 ---
 
-## 📋 SPRINT 10B — Resumen Mensual y Auto-categorización
+## 📋 SPRINT 10B — Resumen Mensual y Recomendaciones de Presupuesto
 
 **Objetivo:** Funcionalidades de IA integradas en el flujo normal de la app.
 
