@@ -66,7 +66,7 @@ export default function DebtDetailPage() {
     >
       <Navbar title="Detalle de deuda" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Back button */}
         <Button
           variant="ghost"

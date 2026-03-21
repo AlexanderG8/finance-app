@@ -82,14 +82,14 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
     return (
       <div>
         <Navbar title="Detalle de préstamo" />
-        <div className="p-6 space-y-6">
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-4 w-4" />
             <Skeleton className="h-4 w-32" />
           </div>
           <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Card key={i}>
                 <CardContent className="p-5">
@@ -171,7 +171,7 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
     <motion.div variants={pageVariants} initial="initial" animate="animate" transition={{ duration: 0.3 }}>
       <Navbar title="Detalle de préstamo" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-sm text-slate-500">
           <Link href="/loans" className="hover:text-[#2E86AB] transition-colors">
@@ -211,7 +211,7 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
         </div>
 
         {/* Info cards */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3">
           {infoCards.map((card) => {
             const Icon = card.icon;
             return (

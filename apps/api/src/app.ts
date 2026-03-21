@@ -10,6 +10,7 @@ import loansRoutes from './routes/loans.routes';
 import debtsRoutes from './routes/debts.routes';
 import savingsRoutes from './routes/savings.routes';
 import incomeRoutes from './routes/income.routes';
+import chatRoutes from './routes/chat.routes';
 import { authMiddleware } from './middlewares/auth.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { startNotificationJobs } from './jobs/notification.job';
@@ -182,6 +183,7 @@ app.use('/api/v1/loans', loansRoutes);
 app.use('/api/v1/debts', debtsRoutes);
 app.use('/api/v1/savings', savingsRoutes);
 app.use('/api/v1/incomes', incomeRoutes);
+app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/dashboard', dashboardRouter);
 
 // ── Health Check ──────────────────────────────────────────────────────────────

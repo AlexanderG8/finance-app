@@ -17,6 +17,8 @@ import { ExpensesPieChart } from '@/components/dashboard/ExpensesPieChart';
 import { UpcomingPayments } from '@/components/dashboard/UpcomingPayments';
 import { LoanStatusBar } from '@/components/dashboard/LoanStatusBar';
 import { BalanceBarChart } from '@/components/dashboard/BalanceBarChart';
+import { AIMonthlySummary } from '@/components/dashboard/AIMonthlySummary';
+import { AIAnomalyAlert } from '@/components/dashboard/AIAnomalyAlert';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -126,13 +128,16 @@ export default function DashboardPage() {
     >
       <Navbar title="Dashboard" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        {/* ── Anomaly Alert (background fetch, non-blocking) ── */}
+        <AIAnomalyAlert />
+
         {/* ── Section 1: Stat Cards ── */}
         <motion.div
           variants={containerVariants}
           initial="initial"
           animate="animate"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
+          className="grid grid-cols-2 gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-5"
         >
           {isLoading
             ? Array.from({ length: 5 }).map((_, i) => <SummaryCardSkeleton key={i} />)
@@ -205,6 +210,18 @@ export default function DashboardPage() {
             <LoanStatusBar loans={data?.loans ?? { totalLent: 0, totalCollected: 0, totalPending: 0, activeLoans: 0, completedLoans: 0, overdueLoans: 0 }} isLoading={isLoading} />
           </motion.div>
         )}
+
+        {/* ── Section 4: AI Monthly Summary ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          <AIMonthlySummary
+            month={data?.currentMonth.month ?? new Date().getMonth() + 1}
+            year={data?.currentMonth.year ?? new Date().getFullYear()}
+          />
+        </motion.div>
 
         {/* ── Empty State ── */}
         {isAllEmpty && (

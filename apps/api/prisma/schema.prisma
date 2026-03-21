@@ -85,6 +85,7 @@ model User {
   personalDebts PersonalDebt[]
   savingGoals   SavingGoal[]
   incomes       Income[]
+  chatMessages  ChatMessage[]
 
   @@map("users")
 }
@@ -282,4 +283,16 @@ model SavingContribution {
   goal SavingGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
 
   @@map("saving_contributions")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String   // 'user' | 'assistant'
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
 }

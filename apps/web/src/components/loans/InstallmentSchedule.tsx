@@ -94,10 +94,11 @@ export function InstallmentSchedule({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs border-[#2E86AB] text-[#2E86AB] hover:bg-[#2E86AB] hover:text-white"
+                            className="text-xs border-[#2E86AB] text-[#2E86AB] hover:bg-[#2E86AB] hover:text-white whitespace-nowrap"
                             onClick={() => setSelectedInstallment(installment)}
                           >
-                            Registrar pago
+                            <span className="hidden sm:inline">Registrar pago</span>
+                            <span className="sm:hidden">Pagar</span>
                           </Button>
                         ) : (
                           <span className="text-xs text-slate-400">—</span>

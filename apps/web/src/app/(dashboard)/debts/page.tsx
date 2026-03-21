@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DebtCard } from '@/components/debts/DebtCard';
 import { DebtFormModal } from '@/components/debts/DebtFormModal';
 import { DebtPaymentModal } from '@/components/debts/DebtPaymentModal';
+import { AIDebtStrategy } from '@/components/debts/AIDebtStrategy';
 import { useDebts, useDeleteDebt } from '@/hooks/useDebts';
 import { formatCurrency } from '@/lib/utils';
 import type { PersonalDebt, DebtStatus } from '@finance-app/shared';
@@ -107,16 +108,17 @@ export default function DebtsPage() {
     >
       <Navbar title="Deudas" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Gestiona tus deudas personales</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500 hidden sm:block">Gestiona tus deudas personales</p>
           <Button
             onClick={handleOpenCreate}
-            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB]"
+            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB] ml-auto"
           >
             <Plus className="h-4 w-4" />
-            Nueva deuda
+            <span className="hidden sm:inline">Nueva deuda</span>
+            <span className="sm:hidden">Nueva</span>
           </Button>
         </div>
 
@@ -151,8 +153,11 @@ export default function DebtsPage() {
           </Card>
         </div>
 
+        {/* AI Debt Strategy */}
+        <AIDebtStrategy />
+
         {/* Filters */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
           {filterOptions.map((opt) => (
             <Button
               key={opt.value}
