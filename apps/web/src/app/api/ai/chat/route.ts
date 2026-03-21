@@ -41,26 +41,29 @@ export async function POST(req: Request): Promise<Response> {
   const { messages } = body;
 
   // 3. Fetch financial context in parallel
-  const [dashboardRes, expensesRes, incomesRes, debtsRes, savingsRes] = await Promise.all([
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const [dashboardRes, expensesRes, incomesRes, debtsRes, savingsRes, loansRes] = await Promise.all([
     fetch(`${API_URL}/dashboard/summary`, { headers: { Authorization: authHeader } }),
-    fetch(`${API_URL}/expenses?limit=10`, { headers: { Authorization: authHeader } }),
-    fetch(`${API_URL}/incomes?limit=5`, { headers: { Authorization: authHeader } }),
+    fetch(`${API_URL}/expenses?limit=50&month=${month}&year=${year}`, { headers: { Authorization: authHeader } }),
+    fetch(`${API_URL}/incomes?limit=20&month=${month}&year=${year}`, { headers: { Authorization: authHeader } }),
     fetch(`${API_URL}/debts?status=PENDING&limit=10`, { headers: { Authorization: authHeader } }),
     fetch(`${API_URL}/savings`, { headers: { Authorization: authHeader } }),
+    fetch(`${API_URL}/loans?status=ACTIVE&limit=10`, { headers: { Authorization: authHeader } }),
   ]);
 
-  const [dashboardJson, expensesJson, incomesJson, debtsJson, savingsJson] = await Promise.all([
+  const [dashboardJson, expensesJson, incomesJson, debtsJson, savingsJson, loansJson] = await Promise.all([
     dashboardRes.json(),
     expensesRes.json(),
     incomesRes.json(),
     debtsRes.json(),
     savingsRes.json(),
+    loansRes.json(),
   ]);
 
   // 4. Build context strings
-  const now = new Date();
   const monthName = MONTH_NAMES[now.getMonth()];
-  const year = now.getFullYear();
 
   const d = dashboardJson.data as {
     income: { total: number };
@@ -103,26 +106,40 @@ export async function POST(req: Request): Promise<Response> {
     }),
   );
 
+  const loansList = formatList(
+    ((loansJson.data as Array<{ borrowerName: string; principal: number; totalAmount: number; installmentAmount: number; numberOfInstallments: number; status: string }>) ?? []).map(
+      (l) =>
+        `${l.borrowerName} | Prestado: S/ ${Number(l.principal).toFixed(2)} | Total a cobrar: S/ ${Number(l.totalAmount).toFixed(2)} | Cuota: S/ ${Number(l.installmentAmount).toFixed(2)} x ${l.numberOfInstallments} | Estado: ${l.status}`,
+    ),
+  );
+
   // 5. Build system prompt
   const systemPrompt = `Eres un asesor financiero personal de ${user.name}.
 Solo tienes acceso a los datos financieros de este usuario específico.
 
 INSTRUCCIÓN DE IDIOMA: Detecta el idioma en que el usuario escribe su mensaje y responde SIEMPRE en ese mismo idioma. Si escribe en español, responde en español. Si escribe en inglés, responde en inglés.
 
+INSTRUCCIÓN DE FORMATO: Usa texto plano sin markdown. No uses asteriscos, almohadillas ni símbolos de formato. Usa saltos de línea para separar ideas. Sé amigable y profesional, como un asesor de confianza.
+
+INSTRUCCIÓN DE EXTENSIÓN: Adapta la extensión de tu respuesta a la complejidad de la pregunta. Para preguntas simples sé breve (1-2 oraciones). Para análisis o planes financieros sé detallado y estructurado.
+
 DATOS FINANCIEROS ACTUALES (${monthName} ${year}):
 - Ingresos del mes: S/ ${d?.income?.total?.toFixed(2) ?? '0.00'}
 - Gastos del mes: S/ ${d?.expenses?.total?.toFixed(2) ?? '0.00'}
 - Pagos a deudas del mes: S/ ${d?.debtPayments?.total?.toFixed(2) ?? '0.00'}
-- Balance: S/ ${d?.balance?.toFixed(2) ?? '0.00'}
+- Balance real del mes (Ingresos - Gastos - Pagos de deudas): S/ ${d?.balance?.toFixed(2) ?? '0.00'}
 - Deudas pendientes totales: S/ ${d?.debts?.totalPending?.toFixed(2) ?? '0.00'}
 - Ahorros acumulados: S/ ${d?.savings?.totalSaved?.toFixed(2) ?? '0.00'} en ${d?.savings?.goalsCount ?? 0} meta(s)
-- Préstamos por cobrar: S/ ${d?.loans?.totalPending?.toFixed(2) ?? '0.00'} (${d?.loans?.activeLoans ?? 0} activo(s))
+- Préstamos activos por cobrar: S/ ${d?.loans?.totalPending?.toFixed(2) ?? '0.00'} (${d?.loans?.activeLoans ?? 0} préstamo(s))
 
-ÚLTIMOS GASTOS DEL MES:
+GASTOS DEL MES (${monthName} ${year}):
 ${expensesList}
 
-ÚLTIMOS INGRESOS:
+INGRESOS DEL MES (${monthName} ${year}):
 ${incomesList}
+
+PRÉSTAMOS ACTIVOS:
+${loansList}
 
 DEUDAS PENDIENTES:
 ${debtsList}
@@ -131,7 +148,6 @@ METAS DE AHORRO:
 ${savingsList}
 
 REGLAS:
-- Responde de forma concisa y directa.
 - Usa montos en soles (S/) para valores en PEN.
 - Si el usuario pregunta datos que no están en el contexto, dilo honestamente.
 - No inventes cifras ni datos que no estén en el contexto.

@@ -82,7 +82,7 @@ export default function ExpenseDetailPage({ params }: { params: { id: string } }
     <motion.div variants={pageVariants} initial="initial" animate="animate" transition={{ duration: 0.3 }}>
       <Navbar title="Detalle de gasto" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Link href="/expenses" className="hover:text-[#2E86AB] transition-colors">

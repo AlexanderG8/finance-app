@@ -77,16 +77,17 @@ export default function LoansPage() {
     >
       <Navbar title="Préstamos" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Gestiona los préstamos otorgados</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500 hidden sm:block">Gestiona los préstamos otorgados</p>
           <Button
-            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB]"
+            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB] ml-auto"
             onClick={() => setIsFormOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Nuevo préstamo
+            <span className="hidden sm:inline">Nuevo préstamo</span>
+            <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
 
@@ -180,11 +181,11 @@ export default function LoansPage() {
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500 text-center sm:text-left">
               Mostrando {loans.length} de {pagination.total} préstamos
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <Button
                 variant="outline"
                 size="sm"

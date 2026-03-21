@@ -28,7 +28,7 @@ export default function SettingsPage() {
       transition={{ duration: 0.3 }}
     >
       <Navbar title="Configuración" />
-      <div className="p-6 max-w-2xl space-y-6">
+      <div className="p-4 md:p-6 max-w-2xl space-y-4 md:space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base text-[#1E3A5F]">Perfil</CardTitle>

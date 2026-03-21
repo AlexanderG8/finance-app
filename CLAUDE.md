@@ -4,6 +4,9 @@
 > **LEER COMPLETAMENTE ANTES DE ESCRIBIR UNA SOLA LÍNEA DE CÓDIGO.**
 > Este archivo es la única fuente de verdad del proyecto. Ante cualquier duda, consulta aquí primero.
 
+> **Estado actual:** Fase 1 (Web) — ✅ COMPLETADA (Sprints 1–11). Pendiente: Sprint 12 (Deploy).
+> **Fase 2 (Mobile)** — Planificada. Ver documentación completa en `docs/MobileApp.md`.
+
 ---
 
 ## 📌 REGLAS ABSOLUTAS (NO NEGOCIABLES)
@@ -77,6 +80,14 @@ finance-app/
 │   ├── web/                          # Next.js 14 Frontend
 │   │   ├── src/
 │   │   │   ├── app/                  # App Router de Next.js
+│   │   │   │   ├── api/
+│   │   │   │   │   └── ai/           # Route Handlers de IA (excepción justificada)
+│   │   │   │   │       ├── chat/route.ts
+│   │   │   │   │       ├── monthly-summary/route.ts
+│   │   │   │   │       ├── budget-recommendations/route.ts
+│   │   │   │   │       ├── debt-strategy/route.ts
+│   │   │   │   │       ├── savings-advice/route.ts
+│   │   │   │   │       └── anomalies/route.ts
 │   │   │   │   ├── (auth)/
 │   │   │   │   │   ├── login/
 │   │   │   │   │   │   └── page.tsx
@@ -96,6 +107,8 @@ finance-app/
 │   │   │   │   │   ├── savings/
 │   │   │   │   │   │   ├── page.tsx
 │   │   │   │   │   │   └── [id]/page.tsx
+│   │   │   │   │   ├── ai-chat/
+│   │   │   │   │   │   └── page.tsx          # Chat IA con historial
 │   │   │   │   │   └── settings/
 │   │   │   │   │       └── page.tsx
 │   │   │   │   ├── layout.tsx
@@ -103,11 +116,20 @@ finance-app/
 │   │   │   ├── components/
 │   │   │   │   ├── ui/               # Componentes base (shadcn/ui)
 │   │   │   │   ├── layout/           # Sidebar, Navbar, etc.
+│   │   │   │   ├── ai/               # Componentes del chat IA
+│   │   │   │   │   ├── ChatMessage.tsx
+│   │   │   │   │   ├── ChatInput.tsx
+│   │   │   │   │   └── TypingIndicator.tsx
 │   │   │   │   ├── dashboard/        # Componentes del dashboard
+│   │   │   │   │   ├── AIMonthlySummary.tsx
+│   │   │   │   │   └── AIAnomalyAlert.tsx
 │   │   │   │   ├── expenses/
+│   │   │   │   │   └── AIBudgetRecommendations.tsx
 │   │   │   │   ├── loans/
 │   │   │   │   ├── debts/
+│   │   │   │   │   └── AIDebtStrategy.tsx
 │   │   │   │   └── savings/
+│   │   │   │       └── AISavingsAdvice.tsx
 │   │   │   ├── hooks/                # Custom React hooks
 │   │   │   ├── lib/
 │   │   │   │   ├── api-client.ts     # Cliente HTTP (axios/fetch wrapper)
@@ -128,13 +150,15 @@ finance-app/
 │       │   │   ├── expenses.controller.ts
 │       │   │   ├── loans.controller.ts
 │       │   │   ├── debts.controller.ts
-│       │   │   └── savings.controller.ts
+│       │   │   ├── savings.controller.ts
+│       │   │   └── chat.controller.ts
 │       │   ├── routes/               # Definición de rutas Express
 │       │   │   ├── auth.routes.ts
 │       │   │   ├── expenses.routes.ts
 │       │   │   ├── loans.routes.ts
 │       │   │   ├── debts.routes.ts
-│       │   │   └── savings.routes.ts
+│       │   │   ├── savings.routes.ts
+│       │   │   └── chat.routes.ts
 │       │   ├── middlewares/
 │       │   │   ├── auth.middleware.ts      # Verificación JWT
 │       │   │   ├── validate.middleware.ts  # Validación Zod
@@ -145,6 +169,7 @@ finance-app/
 │       │   │   ├── loans.service.ts
 │       │   │   ├── debts.service.ts
 │       │   │   ├── savings.service.ts
+│       │   │   ├── chat.service.ts
 │       │   │   └── notifications.service.ts
 │       │   ├── schemas/              # Schemas de validación Zod
 │       │   │   ├── auth.schema.ts
@@ -206,7 +231,10 @@ finance-app/
   "@hookform/resolvers": "3.x",
   "recharts": "2.x",
   "date-fns": "3.x",
-  "lucide-react": "latest"
+  "lucide-react": "latest",
+  "ai": "6.x",
+  "@ai-sdk/google": "3.x",
+  "@ai-sdk/react": "latest"
 }
 ```
 
@@ -345,6 +373,7 @@ model User {
   personalDebts     PersonalDebt[]
   savingGoals       SavingGoal[]
   incomes           Income[]
+  chatMessages      ChatMessage[]
 
   @@map("users")
 }
@@ -543,6 +572,18 @@ model Income {
 
   @@map("incomes")
 }
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String   // 'user' | 'assistant'
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
 ```
 
 ---
@@ -582,7 +623,9 @@ API_URL="http://localhost:4000"
 ### `apps/web/.env.local`
 ```env
 NEXT_PUBLIC_API_URL="http://localhost:4000/api/v1"
+GOOGLE_GENERATIVE_AI_API_KEY="tu-api-key-de-google-ai-studio"
 ```
+> Obtener API Key gratuita en https://aistudio.google.com/app/apikey
 
 ---
 
@@ -808,6 +851,31 @@ GET    /summary            → Resumen general:
                              - loans, debts, savings
 GET    /upcoming-payments  → Próximos vencimientos (loans + debts, próximos 7 días)
 ```
+
+### Chat IA — `/api/v1/chat` [AUTH en todos]
+```
+GET    /history            → Últimos 50 mensajes del historial
+POST   /messages           → Guardar par user+assistant { userMessage, assistantMessage }
+DELETE /history            → Limpiar historial del usuario
+```
+
+### Next.js Route Handlers de IA (`apps/web/src/app/api/ai/`)
+> Excepción justificada al patrón Express: el Vercel AI SDK requiere Route Handlers para streaming nativo.
+> Todos requieren `Authorization: Bearer <accessToken>` y verifican el JWT contra `GET /auth/me`.
+```
+POST /api/ai/chat                   → Chat financiero con streaming (Vercel AI SDK useChat)
+POST /api/ai/monthly-summary        → Resumen narrativo del mes { month, year, lang? }
+POST /api/ai/budget-recommendations → Recomendaciones de presupuesto basadas en últimos 3 meses
+POST /api/ai/debt-strategy          → Estrategia de pago (avalancha vs bola de nieve)
+POST /api/ai/savings-advice         → Asesoría de meta de ahorro { goalId }
+POST /api/ai/anomalies              → Detección de gastos inusuales vs promedio 2 meses anteriores
+```
+
+**Modelo IA:** `gemini-3.1-flash-lite-preview` (Google Gemini vía `@ai-sdk/google`)
+**Funciones SDK:**
+- `streamText()` → chat con streaming
+- `generateText()` → resumen mensual (texto libre)
+- `generateObject()` → respuestas estructuradas con schema Zod (budget-recommendations, debt-strategy, savings-advice, anomalies)
 
 ---
 
@@ -1112,19 +1180,125 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 [x] 9.6 Desglose textual debajo del gráfico: Ingresos / Gastos / Pagos de deudas / Balance
 ```
 
-### Sprint 10 — Inteligencia Artificial (A FUTURO)
+### Sprint 10 — Inteligencia Artificial ✅ COMPLETADO
+
+#### Sprint 10A — Chat Financiero con Historial Persistente
 ```
-[ ] 
+[x] 10A.1 Modelo ChatMessage en schema Prisma + migración add_chat_messages
+[x] 10A.2 chat.service.ts: getChatHistory, saveChatMessages, clearChatHistory
+[x] 10A.3 chat.controller.ts + chat.routes.ts (GET/POST/DELETE /api/v1/chat/history)
+[x] 10A.4 Instalar ai, @ai-sdk/google, @ai-sdk/react en apps/web
+[x] 10A.5 Route Handler POST /api/ai/chat con streamText + onFinish guarda historial
+[x] 10A.6 Página /ai-chat con useChat (@ai-sdk/react), historial precargado, suggested questions
+[x] 10A.7 Componentes: ChatMessage.tsx, ChatInput.tsx, TypingIndicator.tsx
+[x] 10A.8 Sidebar: ítem "Asistente IA" con ícono Bot y badge "IA"
+[x] 10A.9 GOOGLE_GENERATIVE_AI_API_KEY en apps/web/.env.local
 ```
 
-### Sprint 11 — QA y Deploy (Pendiente)
+#### Sprint 10B — Resumen Mensual y Recomendaciones de Presupuesto
 ```
-[ ] 11.1 Revisar y completar tests unitarios
-[ ] 11.2 Deploy API en Railway
-[ ] 11.3 Deploy Web en Vercel
-[ ] 11.4 Configurar variables de entorno en producción
-[ ] 11.5 Smoke testing en producción
+[x] 10B.1 Route Handler POST /api/ai/monthly-summary (generateText, lang ES/EN)
+[x] 10B.1 AIMonthlySummary.tsx en Dashboard: selector ES/EN, botón Generar, skeleton
+[x] 10B.2 Route Handler POST /api/ai/budget-recommendations (generateObject, últimos 3 meses)
+[x] 10B.2 AIBudgetRecommendations.tsx en tab Presupuesto de /expenses: modal con sugerencias
+[x] 10B.2 BudgetFormModal actualizado para aceptar defaultCategoryName y defaultAmount
+[ ] 10B.3 Auto-categorización — DESCARTADO (consumo innecesario de tokens)
 ```
+
+#### Sprint 10C — Asesoría Avanzada
+```
+[x] 10C.1 Route Handler POST /api/ai/debt-strategy (generateObject: avalancha vs bola de nieve)
+[x] 10C.1 AIDebtStrategy.tsx en /debts: método, orden de pago, meta mensual, meses estimados
+[x] 10C.2 Route Handler POST /api/ai/savings-advice (generateObject: viabilidad + tips)
+[x] 10C.2 AISavingsAdvice.tsx en /savings/[id]: viabilidad, aporte sugerido, fecha, 3 tips
+[x] 10C.3 Route Handler POST /api/ai/anomalies (generateObject: +25% vs promedio 2 meses)
+[x] 10C.3 AIAnomalyAlert.tsx en Dashboard: carga en background, card ámbar, dismiss por mes
+```
+
+### Sprint 11 — Responsive ✅ COMPLETADO
+
+#### 11A — Layout y Navegación Responsive
+```
+[x] 11A.1 Sidebar: ocultar en mobile (hidden lg:flex)
+[x] 11A.2 MobileMenu.tsx: Sheet (shadcn/ui) con hamburger en Navbar — abre sidebar en mobile
+[x] 11A.3 Navbar: incluye MobileMenu (hamburger visible solo en mobile, lg:hidden)
+[x] 11A.4 Layout (dashboard)/layout.tsx: sidebar fijo en desktop, oculto en mobile
+[x] 11A.5 Padding/spacing global: p-4 md:p-6 en todas las páginas
+```
+
+#### 11B — Páginas Responsive
+```
+[x] 11B.1 Dashboard: stat cards → grid-cols-2 mobile, sm:grid-cols-2, lg:grid-cols-5
+[x] 11B.2 Dashboard: BalanceBarChart + ExpensesPieChart ya en grid-cols-1 lg:grid-cols-2
+[x] 11B.3 Expenses: header con botón compacto en mobile, paginación centrada, filtros flex-wrap
+[x] 11B.4 Loans: header compacto en mobile, paginación centrada
+[x] 11B.5 Loans /[id]: info cards → grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+[x] 11B.6 Debts: header compacto, filtros con flex-wrap
+[x] 11B.7 Savings: grid → grid-cols-1 sm:grid-cols-2 xl:grid-cols-3
+[x] 11B.8 Savings /[id]: layout 2 columnas ya en grid-cols-1 lg:grid-cols-2
+[x] 11B.9 Incomes: select fuente w-full sm:w-[200px], filas de ingreso con min-w-0 y truncate
+[x] 11B.10 Settings: max-w-2xl con p-4 md:p-6
+[x] 11B.11 Debts /[id] y Expenses /[id]: p-4 md:p-6
+```
+
+#### 11C — Componentes Responsive
+```
+[x] 11C.1 InstallmentSchedule: overflow-x-auto existente + botón "Pagar" compacto en mobile
+[x] 11C.2 AIChat: header truncado en mobile, skeleton con p-4 md:p-6
+[x] 11C.3 MobileMenu cierra al navegar (handleNavClick)
+[x] 11C.4 MobileMenu accesibilidad: SheetTitle + SheetDescription con sr-only (fix warnings Radix)
+```
+
+### Sprint 12 — QA y Deploy Web (Pendiente)
+```
+[ ] 12.1 Revisar y completar tests unitarios
+[ ] 12.2 Deploy API en Railway
+[ ] 12.3 Deploy Web en Vercel
+[ ] 12.4 Configurar variables de entorno en producción
+[ ] 12.5 Smoke testing en producción
+```
+
+---
+
+## 📱 FASE 2 — MOBILE (React Native)
+
+> La documentación completa de la Fase 2 se encuentra en **`docs/MobileApp.md`**.
+
+### Resumen de la Fase 2
+- **App:** React Native con Expo 52 + Expo Router v4
+- **Estilos:** NativeWind v4 (Tailwind CSS para React Native)
+- **API:** Misma `apps/api` Express — sin cambios en el backend salvo endpoints de IA
+- **Tipos compartidos:** `packages/shared` (ya existente en el monorepo)
+- **Autenticación:** Zustand (access token en memoria) + Expo SecureStore (refresh token)
+- **Gráficas:** Victory Native + @shopify/react-native-skia
+- **Formularios:** Bottom Sheets (@gorhom/bottom-sheet) en lugar de Modales
+- **Animaciones:** React Native Reanimated (equivalente a Framer Motion)
+
+### Sprints planificados
+```
+[ ] Sprint M1  — Setup + Autenticación (Login, Register, Forgot Password)
+[ ] Sprint M2  — Dashboard (stats, gráficas, IA anomalías, IA resumen)
+[ ] Sprint M3  — Gastos (listado, formulario, presupuesto, IA recomendaciones)
+[ ] Sprint M4  — Ingresos (listado, formulario, resumen por fuente)
+[ ] Sprint M5  — Préstamos (listado, detalle, cuotas, pagos)
+[ ] Sprint M6  — Deudas (listado, detalle, pagos, IA estrategia)
+[ ] Sprint M7  — Ahorros (listado, detalle, contribuciones, IA asesoría)
+[ ] Sprint M8  — Asistente IA (chat con historial, preguntas sugeridas)
+[ ] Sprint M9  — Notificaciones Push (Expo Notifications + Expo Push Token)
+[ ] Sprint M10 — Configuración + QA + Deploy (EAS Build APK/IPA)
+```
+
+### Cambio importante en el backend para Fase 2
+Los endpoints de IA actualmente viven en Next.js Route Handlers (`apps/web/src/app/api/ai/`).
+Para que la app mobile pueda consumirlos, deben migrarse a `apps/api`:
+```
+POST /api/v1/ai/monthly-summary
+POST /api/v1/ai/budget-recommendations
+POST /api/v1/ai/debt-strategy
+POST /api/v1/ai/savings-advice
+POST /api/v1/ai/anomalies
+```
+El endpoint de chat (`/api/v1/chat`) ya existe en Express — no requiere cambios.
 
 ---
 
@@ -1241,5 +1415,6 @@ const categories = [
 
 ---
 
-*Última actualización: Marzo 2026 — v1.0*
+*Última actualización: Marzo 2026 — v3.0*
 *Autor: Alexander Gomez*
+*Fase 1 Web: ✅ Completada | Fase 2 Mobile: 📋 Planificada (ver docs/MobileApp.md)*

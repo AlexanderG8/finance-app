@@ -20,6 +20,7 @@ import { ProjectionCard } from '@/components/savings/ProjectionCard';
 import { ContributionHistory } from '@/components/savings/ContributionHistory';
 import { SavingGoalFormModal } from '@/components/savings/SavingGoalFormModal';
 import { ContributeModal } from '@/components/savings/ContributeModal';
+import { AISavingsAdvice } from '@/components/savings/AISavingsAdvice';
 import { useSavingGoal, useSavingGoalProjection } from '@/hooks/useSavings';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -60,7 +61,7 @@ export default function SavingGoalDetailPage({ params }: SavingGoalDetailPagePro
     >
       <Navbar title={goal?.name ?? 'Meta de ahorro'} />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Link href="/savings" className="hover:text-[#2E86AB] transition-colors">
@@ -123,7 +124,7 @@ export default function SavingGoalDetailPage({ params }: SavingGoalDetailPagePro
             </div>
 
             {/* Main content — 2 columns on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               {/* Left: Progress card */}
               <Card>
                 <CardHeader className="pb-2">
@@ -215,6 +216,9 @@ export default function SavingGoalDetailPage({ params }: SavingGoalDetailPagePro
                 <ProjectionCard projection={projection} currency={goal.currency} />
               ) : null}
             </div>
+
+            {/* AI Savings Advice */}
+            <AISavingsAdvice goalId={params.id} />
 
             {/* Contribution history */}
             <ContributionHistory

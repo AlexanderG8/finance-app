@@ -113,7 +113,7 @@ export default function IncomesPage() {
     >
       <Navbar title="Ingresos" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* ── Header ── */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Navegación de mes */}
@@ -131,7 +131,7 @@ export default function IncomesPage() {
 
           {/* Filtro fuente */}
           <Select value={source} onValueChange={(v) => { setSource(v === 'ALL' ? '' : v); setPage(1); }}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Todas las fuentes" />
             </SelectTrigger>
             <SelectContent>
@@ -264,17 +264,17 @@ export default function IncomesPage() {
               <motion.div variants={containerVariants} initial="initial" animate="animate" className="space-y-3">
                 {incomes.map((income) => (
                   <motion.div key={income.id} variants={cardVariants}>
-                    <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] p-4 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] p-3 md:p-4 hover:bg-slate-50 transition-colors gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div
-                          className="flex h-10 w-10 items-center justify-center rounded-lg text-white text-sm font-bold shrink-0"
+                          className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-lg text-white text-sm font-bold shrink-0"
                           style={{ backgroundColor: INCOME_SOURCE_COLORS[income.source] }}
                         >
                           {INCOME_SOURCE_LABELS[income.source].charAt(0)}
                         </div>
-                        <div>
-                          <p className="font-medium text-[#1E293B]">{income.description}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                        <div className="min-w-0">
+                          <p className="font-medium text-[#1E293B] truncate">{income.description}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                             <Badge variant="secondary" className="text-xs">
                               {INCOME_SOURCE_LABELS[income.source]}
                             </Badge>
@@ -290,8 +290,8 @@ export default function IncomesPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <p className="font-bold text-[#28A745] text-lg">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <p className="font-bold text-[#28A745] text-base md:text-lg">
                           +{formatCurrency(income.amount)}
                         </p>
                         <div className="flex gap-1">

@@ -18,6 +18,7 @@ import { UpcomingPayments } from '@/components/dashboard/UpcomingPayments';
 import { LoanStatusBar } from '@/components/dashboard/LoanStatusBar';
 import { BalanceBarChart } from '@/components/dashboard/BalanceBarChart';
 import { AIMonthlySummary } from '@/components/dashboard/AIMonthlySummary';
+import { AIAnomalyAlert } from '@/components/dashboard/AIAnomalyAlert';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -127,13 +128,16 @@ export default function DashboardPage() {
     >
       <Navbar title="Dashboard" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        {/* ── Anomaly Alert (background fetch, non-blocking) ── */}
+        <AIAnomalyAlert />
+
         {/* ── Section 1: Stat Cards ── */}
         <motion.div
           variants={containerVariants}
           initial="initial"
           animate="animate"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
+          className="grid grid-cols-2 gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-5"
         >
           {isLoading
             ? Array.from({ length: 5 }).map((_, i) => <SummaryCardSkeleton key={i} />)

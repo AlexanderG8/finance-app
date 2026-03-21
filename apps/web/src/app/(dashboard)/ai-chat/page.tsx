@@ -111,10 +111,11 @@ function ChatInterface({ initialMessages }: { initialMessages: UIMessage[] }) {
   return (
     <div className="flex h-[calc(100vh-64px)] flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-white px-6 py-3">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Sparkles className="h-4 w-4 text-[#2E86AB]" />
-          <span>Gemini 3.1 Flash Lite Preview · El historial se guarda automáticamente</span>
+      <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-white px-4 md:px-6 py-3">
+        <div className="flex items-center gap-2 text-sm text-slate-500 min-w-0">
+          <Sparkles className="h-4 w-4 text-[#2E86AB] shrink-0" />
+          <span className="truncate hidden sm:inline">Gemini 3.1 Flash Lite Preview · El historial se guarda automáticamente</span>
+          <span className="truncate sm:hidden">Historial guardado</span>
         </div>
         {!isEmpty && (
           <button
@@ -230,7 +231,7 @@ export default function AIChatPage() {
       <Navbar title="Asistente IA" />
 
       {isLoadingHistory || initialMessages === null ? (
-        <div className="flex flex-col gap-4 p-6">
+        <div className="flex flex-col gap-4 p-4 md:p-6">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-12 w-3/4" />
           <Skeleton className="h-16 w-full" />

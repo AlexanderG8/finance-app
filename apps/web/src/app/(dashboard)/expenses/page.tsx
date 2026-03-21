@@ -131,19 +131,20 @@ export default function ExpensesPage() {
     >
       <Navbar title="Gastos" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Gestiona tus gastos y presupuestos</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500 hidden sm:block">Gestiona tus gastos y presupuestos</p>
           <Button
             onClick={() => {
               setEditingExpense(undefined);
               setExpenseModalOpen(true);
             }}
-            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB] text-white"
+            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB] text-white ml-auto"
           >
             <Plus className="h-4 w-4" />
-            Nuevo gasto
+            <span className="hidden sm:inline">Nuevo gasto</span>
+            <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
 
@@ -229,12 +230,12 @@ export default function ExpensesPage() {
 
                 {/* Paginación */}
                 {pagination && pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-2">
-                    <p className="text-sm text-slate-500">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
+                    <p className="text-sm text-slate-500 text-center sm:text-left">
                       Página {pagination.page} de {pagination.totalPages} · {pagination.total}{' '}
                       gastos en total
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -264,7 +265,7 @@ export default function ExpensesPage() {
 
           {/* ── TAB: PRESUPUESTO ─────────────────────────────────────── */}
           <TabsContent value="budget" className="space-y-4 mt-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 Presupuesto vs. gasto real para{' '}
                 <span className="font-medium text-[#1E3A5F]">
@@ -274,7 +275,7 @@ export default function ExpensesPage() {
                   })}
                 </span>
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <AIBudgetRecommendationsButton onApply={handleAIRecommendationApply} />
                 <Button
                   onClick={() => { setAiCategoryName(undefined); setAiAmount(undefined); setBudgetModalOpen(true); }}

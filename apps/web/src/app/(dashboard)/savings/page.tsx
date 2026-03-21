@@ -66,16 +66,17 @@ export default function SavingsPage() {
     >
       <Navbar title="Ahorros" />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Gestiona tus metas de ahorro</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500 hidden sm:block">Gestiona tus metas de ahorro</p>
           <Button
             onClick={handleOpenCreate}
-            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB]"
+            className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB] ml-auto"
           >
             <Plus className="h-4 w-4" />
-            Nueva meta
+            <span className="hidden sm:inline">Nueva meta</span>
+            <span className="sm:hidden">Nueva</span>
           </Button>
         </div>
 
@@ -143,7 +144,7 @@ export default function SavingsPage() {
             variants={containerVariants}
             initial="initial"
             animate="animate"
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
           >
             {goals.map((goal) => (
               <motion.div key={goal.id} variants={cardVariants}>
