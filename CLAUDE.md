@@ -5,7 +5,7 @@
 > Este archivo es la única fuente de verdad del proyecto. Ante cualquier duda, consulta aquí primero.
 
 > **Estado actual:** Fase 1 (Web) — ✅ COMPLETADA (Sprints 1–11). Pendiente: Sprint 12 (Deploy).
-> **Fase 2 (Mobile)** — Planificada. Ver documentación completa en `docs/MobileApp.md`.
+> **Fase 2 (Mobile)** — En progreso. Sprint M1 ✅ COMPLETADO. Ver documentación completa en `docs/MobileApp.md`.
 
 ---
 
@@ -1276,7 +1276,7 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 
 ### Sprints planificados
 ```
-[ ] Sprint M1  — Setup + Autenticación (Login, Register, Forgot Password)
+[x] Sprint M1  — Setup + Autenticación (Login, Register, Forgot Password)
 [ ] Sprint M2  — Dashboard (stats, gráficas, IA anomalías, IA resumen)
 [ ] Sprint M3  — Gastos (listado, formulario, presupuesto, IA recomendaciones)
 [ ] Sprint M4  — Ingresos (listado, formulario, resumen por fuente)
