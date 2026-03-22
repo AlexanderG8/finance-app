@@ -1277,7 +1277,7 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 ### Sprints planificados
 ```
 [x] Sprint M1  — Setup + Autenticación (Login, Register, Forgot Password)
-[ ] Sprint M2  — Dashboard (stats, gráficas, IA anomalías, IA resumen)
+[x] Sprint M2  — Dashboard (stats, gráficas, próximos vencimientos, pull-to-refresh)
 [ ] Sprint M3  — Gastos (listado, formulario, presupuesto, IA recomendaciones)
 [ ] Sprint M4  — Ingresos (listado, formulario, resumen por fuente)
 [ ] Sprint M5  — Préstamos (listado, detalle, cuotas, pagos)

@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+const PUSH_ENABLED_KEY = 'push_notifications_enabled';
 
 export const storage = {
   async getAccessToken(): Promise<string | null> {
@@ -25,5 +26,15 @@ export const storage = {
       SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
       SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
     ]);
+  },
+
+  // Push notification preference (default: enabled = true)
+  async getPushEnabled(): Promise<boolean> {
+    const val = await SecureStore.getItemAsync(PUSH_ENABLED_KEY);
+    return val !== 'false';
+  },
+
+  async setPushEnabled(enabled: boolean): Promise<void> {
+    await SecureStore.setItemAsync(PUSH_ENABLED_KEY, enabled ? 'true' : 'false');
   },
 };

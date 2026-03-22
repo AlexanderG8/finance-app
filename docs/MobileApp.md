@@ -361,144 +361,302 @@ import { VictoryPie, VictoryBar } from 'victory-native';
 
 ## 📋 Plan de Sprints — Fase 2 Mobile
 
-### Sprint M1 — Setup + Autenticación
+### Sprint M1 — Setup + Autenticación ✅ COMPLETADO
 ```
-[ ] M1.1  Inicializar Expo app en apps/mobile (expo init con TypeScript template)
-[ ] M1.2  Configurar Expo Router (file-based routing)
-[ ] M1.3  Instalar y configurar NativeWind (Tailwind para RN)
-[ ] M1.4  Configurar tsconfig.json con path aliases (@/components, @/lib, etc.)
-[ ] M1.5  Agregar apps/mobile a turbo.json y root package.json
-[ ] M1.6  Configurar @finance-app/shared en package.json de mobile
-[ ] M1.7  Crear storage.ts (Expo SecureStore wrapper)
-[ ] M1.8  Crear api-client.ts (Axios instance con interceptores de auth)
-[ ] M1.9  Crear auth.store.ts (Zustand — accessToken en memoria)
-[ ] M1.10 Implementar Root _layout.tsx (auth guard: redirige a login si no autenticado)
-[ ] M1.11 Pantalla Login: form email + password, validación Zod, llamada a /auth/login
-[ ] M1.12 Pantalla Register: form nombre + email + password, llamada a /auth/register
-[ ] M1.13 Pantalla Forgot Password: form email, llamada a /auth/forgot-password
-[ ] M1.14 Lógica de renovación de token al abrir app (SecureStore → refresh → Zustand)
-[ ] M1.15 Splash screen y app icon configurados
+[x] M1.1  Inicializar Expo app en apps/mobile con TypeScript template (Expo SDK 55)
+[x] M1.2  Configurar Expo Router v4 (file-based routing — grupos (auth) y (tabs))
+[x] M1.3  Instalar y configurar NativeWind v4 (babel.config.js + metro.config.js + tailwind.config.js)
+[x] M1.4  Configurar tsconfig.json con path aliases (@/*), jsxImportSource: nativewind, skipLibCheck
+[x] M1.5  Agregar apps/mobile a turbo.json y root package.json (scripts: mobile, mobile:android)
+[x] M1.6  Configurar @finance-app/shared en package.json + main: expo-router/entry
+[x] M1.7  Crear src/lib/storage.ts (Expo SecureStore — access + refresh tokens)
+[x] M1.8  Crear src/lib/api-client.ts (Axios con interceptores auth + refresh automático + queue)
+[x] M1.9  Crear src/stores/auth.store.ts (Zustand — login, register, logout, loadAuth)
+[x] M1.10 Implementar app/_layout.tsx (SplashScreen + auth guard + GestureHandlerRootView)
+[x] M1.11 Pantalla Login: validación Zod min 8 chars, error específico por campo
+[x] M1.12 Pantalla Register: validación Zod min 8 chars, confirmación de contraseña
+[x] M1.13 Pantalla Forgot Password: form email + estado de éxito genérico (anti-enumeración)
+[x] M1.14 Lógica de renovación de token al abrir app (SecureStore → /auth/me → Zustand)
+[x] M1.15 Splash screen con fondo #1E3A5F y app configurada (scheme: financeapp)
+```
+**Notas de implementación:**
+- La API devuelve `{ user, tokens: { accessToken, refreshToken } }` — NO `{ accessToken, refreshToken, user }` directamente
+- Validación: la API exige `password.min(8)` — el schema Zod del mobile debe coincidir
+- `EXPO_PUBLIC_API_URL`: usar IP local de la PC (no localhost) cuando se prueba en dispositivo físico
+
+### Sprint M2 — Dashboard ✅ COMPLETADO
+```
+[x] M2.1  Tab Bar con 6 tabs: Dashboard 🏠, Gastos 💸, Préstamos 🤝, Deudas 💳, Ahorros 🐷, Más ☰
+[x] M2.2  Hook useDashboard: GET /dashboard/summary (tipado real de la respuesta de la API)
+[x] M2.3  Hook useUpcomingPayments: GET /dashboard/upcoming-payments (parseo correcto: loanInstallments + debts → array plano)
+[x] M2.4  Componente StatCard (3 cards: Por cobrar, Deuda pendiente, Total ahorrado)
+[x] M2.5  Componente BalanceChart (barras nativas con View — sin librería externa) + balance calculado al pie
+[x] M2.6  Componente ExpensesPieChart (barras de progreso nativas por categoría con porcentaje)
+[x] M2.7  Componente UpcomingPayments (lista combinada préstamos + deudas, badges de urgencia)
+[x] M2.8  Card "Estado de préstamos" (activos / completados / vencidos / total cobrado)
+[x] M2.9  Balance card principal (Ingresos − Gastos − Deudas = balance en color verde/rojo)
+[x] M2.10 Pull-to-refresh en Dashboard (RefreshControl con Promise.all)
+[ ] M2.11 AIMonthlySummary → movido a Sprint M8
+[ ] M2.12 AIAnomalyAlert → movido a Sprint M8
+```
+**Notas de implementación:**
+- `victory-native` y `@shopify/react-native-skia` **NO se usan** — incompatibles con Expo Go + RN 0.83 + Reanimated 4.x
+- Las gráficas son implementaciones nativas con `View` (barras de progreso) — funcionales y sin dependencias
+- La API devuelve `byCategory` como `{ category: { id, name, emoji, color }, total, count }[]` — NO `{ categoryName, emoji, color, total }[]`
+- La API devuelve `loans` como `{ totalLent, totalCollected, totalPending, activeLoans, completedLoans, overdueLoans }`
+- La API devuelve `debts` como `{ totalPending }` — NO `{ totalDebt, totalPaid, pendingCount }`
+- `upcoming-payments` devuelve `{ loanInstallments: [], debts: [] }` — hay que combinar y mapear manualmente
+- Tab "profile" eliminado — reemplazado por "debts" (💳) y "more" (☰)
+- Archivos creados: `src/constants/colors.ts`, `src/lib/utils.ts`, `src/hooks/useDashboard.ts`, `src/hooks/useUpcomingPayments.ts`, `src/components/dashboard/`
+
+### Sprint M3 — Gastos ✅ COMPLETADO
+```
+[x] M3.1  Hook useExpenses: GET /expenses (con filtros mes/año/categoría/método)
+[x] M3.2  Hook useMonthlySummary: GET /expenses/summary/monthly
+[x] M3.3  deleteExpense integrado en useExpenses (DELETE /expenses/:id → 204)
+[x] M3.4  Pantalla Gastos: FlatList de ExpenseCard + selector de mes + paginación
+[x] M3.5  Componente ExpenseCard: emoji categoría + descripción + monto + fecha + acciones
+[x] M3.6  ExpenseFormSheet (Modal): crear/editar gasto — categoría, monto, método pago, fecha
+[x] M3.7  Hook useCategories: GET /categories
+[x] M3.8  Tab Resumen: gráfica de barras nativa por categoría con porcentajes
+[x] M3.9  Tab Presupuesto: BudgetProgress — hook useBudgetComparison GET /budgets/comparison
+[x] M3.10 Hook useExpenseForm: createExpense + updateExpense con manejo de errores
+```
+**Notas de implementación:**
+- Pantalla tiene 3 tabs internos: Lista / Resumen / Presupuesto
+- Selector horizontal de mes (Ene–Dic) en el header
+- ExpenseFormSheet usa Modal nativo (no bottom sheet) con selector de categorías, métodos de pago: CASH, YAPE, PLIN, CREDIT_CARD
+- BudgetProgress muestra color verde/amarillo/rojo según % del presupuesto usado
+- API respuesta verificada: `{ data: Expense[], pagination }` con `category` embebido en cada gasto
+
+### Sprint M4 — Ingresos ✅ COMPLETADO
+```
+[x] M4.1  Hook useIncomes: GET /incomes (filtros: mes, año, fuente, paginación) + deleteIncome
+[x] M4.2  Hook useIncomeSummary: GET /incomes/summary/monthly
+[x] M4.3  Hook useIncomeForm: createIncome (POST) + updateIncome (PUT)
+[x] M4.4  Pantalla /incomes/index.tsx: FlatList de IncomeCard + selector de mes + tabs
+[x] M4.5  Componente IncomeCard: emoji por fuente + descripción + monto verde + fecha + acciones
+[x] M4.6  IncomeFormSheet (Modal): fuente, descripción, monto, método de recepción, fecha, recurrente
+[x] M4.7  Tab "Resumen": desglose por fuente con barras nativas y porcentajes
+[x] M4.8  Tab "Más" actualizado: ítem Ingresos navega a /incomes (disponible), otros ítems con badge Sprint
+```
+**Notas de implementación:**
+- Pantalla con 2 tabs: Lista / Resumen
+- Fuentes: SALARY, FREELANCE, BUSINESS, INVESTMENT, RENTAL, OTHER — cada una con emoji y color propio
+- Métodos de recepción: YAPE, PLIN, BANK_TRANSFER, CASH (sin CREDIT_CARD — validado contra schema API)
+- Pantalla accesible desde tab "Más" → navega como pantalla nueva (no dentro del tab)
+- API respuesta: `{ data: Income[], pagination }` — sin campo `category` (a diferencia de gastos)
+
+### Sprint M5 — Préstamos ✅ COMPLETADO
+```
+[x] M5.1  Hook useLoans: GET /loans (filtros: status, borrowerName, paginación)
+[x] M5.2  Hook useLoanDetail: GET /loans/:id (incluye installments + payments)
+[x] M5.3  Hook useLoanSummary: GET /loans/summary
+[x] M5.4  Hook useLoanForm: createLoan (POST 201) + updateLoan (PUT) + payInstallment (POST)
+[x] M5.5  Pantalla Préstamos (tabs): filtros Todos/Activos/Vencidos/Completados + FlatList
+[x] M5.6  Componente LoanCard: nombre + estado badge + principal/total/cuota + navega a detalle
+[x] M5.7  LoanFormSheet (Modal): preview automático de interés (15%/<1000, 20%/>=1000)
+[x] M5.8  Pantalla /loans/[id]: info financiera + barra de progreso + cronograma de cuotas
+[x] M5.9  Cuotas con badge de estado (PENDING/PAID/OVERDUE/PARTIAL) y botón "Cobrar"
+[x] M5.10 PayInstallmentSheet (Modal): monto, método, fecha + validación vs. monto pendiente
+[x] M5.11 Summary card: Por cobrar / Cobrado / Activos / Vencidos
+```
+**Notas de implementación:**
+- Interés calculado en el servidor (loan-calculator.ts): <S/1,000 → 15%, ≥S/1,000 → 20%
+- LoanFormSheet muestra preview en tiempo real del total e interés antes de crear
+- payInstallment valida que el monto no supere el pendiente de la cuota
+- Detalle incluye: progreso de cobro (barra), cobrado vs pendiente, cronograma completo
+- Métodos de pago/entrega: YAPE, PLIN, BANK_TRANSFER, CASH (sin CREDIT_CARD)
+
+### Sprint M6 — Deudas ✅ COMPLETADO
+```
+[x] M6.1  Hook useDebts: GET /debts (filtros: status, paginación) + deleteDebt
+[x] M6.2  Hook useDebtDetail: GET /debts/:id (incluye payments[] ordenados por paidAt desc)
+[x] M6.3  Hook useDebtForm: createDebt (POST 201) + updateDebt (PUT) + payDebt (POST)
+[x] M6.4  Pantalla Deudas: filtros Todas/Pendientes/Parciales/Pagadas + FlatList + summary card
+[x] M6.5  Componente DebtCard: acreedor + barra de progreso + badge status + total/pagado/pendiente
+[x] M6.6  DebtFormSheet (Modal): acreedor, monto, cuotas opcionales, fecha vencimiento opcional
+[x] M6.7  Pantalla /debts/[id]: info financiera + barra de progreso + botón pagar + historial
+[x] M6.8  PayDebtSheet (Modal): monto pre-llenado con pendiente, método, fecha + validación
+```
+**Notas de implementación:**
+- Debt tiene `numberOfInstallments` y `dueDate` opcionales (null si no aplica)
+- Status automático por servidor: PENDING (0 pagado) → PARTIAL → PAID (completo)
+- DebtCard toca para navegar al detalle (/debts/[id])
+- Historial de pagos ordenado por `paidAt desc` (más reciente primero)
+- PayDebtSheet pre-carga el método habitual de la deuda y el monto pendiente restante
+- Métodos de pago: YAPE, PLIN, BANK_TRANSFER, CASH (sin CREDIT_CARD)
+
+### Sprint M7 — Ahorros ✅ COMPLETADO
+```
+[x] M7.1  Hook useSavings: GET /savings (lista sin paginación, array directo)
+[x] M7.2  Hook useSavingDetail: GET /savings/:id + GET /savings/:id/projection en paralelo (Promise.all)
+[x] M7.3  Hook useSavingForm: createGoal (POST), updateGoal (PUT), contribute (POST /:id/contribute)
+[x] M7.4  deleteGoal integrado en useSavings (DELETE /savings/:id → 204)
+[x] M7.5  Pantalla Ahorros (tabs/savings.tsx): summary card (total ahorrado/objetivo/en progreso) + FlatList de SavingGoalCards
+[x] M7.6  SavingGoalCard: tipo emoji (🎯/🆘/⭐), status badge, ahorrado/meta/restante, barra de progreso, targetDate, monthlyContribution
+[x] M7.7  SavingGoalFormSheet: tipo selector, nombre, targetAmount+currency, monthlyContribution (opcional), DatePickerField targetDate (opcional), notas
+[x] M7.8  Pantalla Detalle /savings/[id]: header con status, info financiera + barra de progreso, proyección, fechas, cambio de estado, historial de aportes
+[x] M7.9  ContributeSheet: solo BANK_TRANSFER/CASH, info de meta, monto, DatePickerField, notas
+[x] M7.10 AISavingsAdvice: pendiente (Sprint M8D)
+```
+**Notas de implementación:**
+- `useSavings` retorna array directo (sin paginación), a diferencia de otros endpoints
+- `useSavingDetail` hace fetch paralelo de detalle + proyección con `Promise.all`
+- La proyección muestra: aporte mensual, meses restantes, fecha estimada, indicador isOnTrack
+- Métodos de pago restringidos en ContributeSheet: solo BANK_TRANSFER y CASH
+- Status puede cambiarse desde el detalle: IN_PROGRESS / PAUSED / COMPLETED
+- El botón "Agregar aporte" se oculta cuando status === 'COMPLETED'
+
+### Sprint M8 — Inteligencia Artificial Completa ✅ COMPLETADO
+> Cubre TODAS las funcionalidades de IA del Sprint 10 (10A + 10B + 10C) de la web, migradas/adaptadas para Mobile.
+
+#### M8A — Migración de endpoints IA al backend Express ✅
+```
+[x] M8A.1  apps/api/src/routes/ai.routes.ts y controllers/ai.controller.ts:
+           POST /api/v1/ai/chat                   → Chat no-streaming (generateText)
+           POST /api/v1/ai/monthly-summary         → Resumen narrativo del mes
+           POST /api/v1/ai/budget-recommendations  → Recomendaciones de presupuesto
+           POST /api/v1/ai/debt-strategy           → Estrategia de pago de deudas
+           POST /api/v1/ai/savings-advice          → Asesoría de meta de ahorro
+           POST /api/v1/ai/anomalies               → Detección de gastos inusuales
+[x] M8A.2  Instalado en apps/api: @ai-sdk/google + ai
+[x] M8A.3  GOOGLE_GENERATIVE_AI_API_KEY ya existía en apps/api/.env
+[x] M8A.4  Modelo: gemini-2.0-flash en todos los endpoints
+[x] M8A.5  Cada endpoint usa authMiddleware + llama servicios Prisma directamente
+[x] M8A.6  Chat history reutiliza chatService (GET/POST/DELETE /api/v1/chat/history)
 ```
 
-### Sprint M2 — Dashboard
+#### M8B — Chat Financiero ✅
 ```
-[ ] M2.1  Tab Bar layout con 6 tabs e íconos (Dashboard, Gastos, Préstamos, Deudas, Ahorros, Más)
-[ ] M2.2  Hook useDashboard: GET /dashboard/summary
-[ ] M2.3  Hook useUpcomingPayments: GET /dashboard/upcoming-payments
-[ ] M2.4  Componente StatCard (5 tarjetas: ingresos, gastos, por cobrar, deudas, ahorros)
-[ ] M2.5  Componente BalanceChart (VictoryBar: ingresos vs gastos vs pagos de deudas)
-[ ] M2.6  Componente ExpensesPieChart (VictoryPie por categoría)
-[ ] M2.7  Componente UpcomingPayments (lista de próximos vencimientos)
-[ ] M2.8  Componente AIMonthlySummary (POST /api/v1/ai/monthly-summary)
-[ ] M2.9  Componente AIAnomalyAlert (POST /api/v1/ai/anomalies)
-[ ] M2.10 Pull-to-refresh en Dashboard
-```
-
-### Sprint M3 — Gastos
-```
-[ ] M3.1  Hook useExpenses: GET /expenses (con filtros mes/año/categoría/método)
-[ ] M3.2  Hook useMonthlySummary: GET /expenses/summary/monthly
-[ ] M3.3  Hook useDeleteExpense: DELETE /expenses/:id
-[ ] M3.4  Pantalla Gastos: FlatList de ExpenseCard + filtros + paginación
-[ ] M3.5  Componente ExpenseCard: emoji categoría + descripción + monto + fecha
-[ ] M3.6  ExpenseFormSheet (Bottom Sheet): crear/editar gasto con validación Zod
-[ ] M3.7  Pantalla Detalle Gasto /expenses/[id]: info completa + editar + eliminar
-[ ] M3.8  MonthlySummaryChart: gráfica de barras por categoría
-[ ] M3.9  Tab Presupuesto: BudgetProgress por categoría + agregar presupuesto
-[ ] M3.10 AIBudgetRecommendations: botón que llama a POST /api/v1/ai/budget-recommendations
+[x] M8B.1  Hook useAIChat: POST /api/v1/ai/chat (respuesta completa, no streaming)
+[x] M8B.2  Pantalla /ai-chat/index.tsx: interfaz tipo mensajería
+[x] M8B.3  ChatBubble: burbuja usuario (derecha, fondo #1E3A5F) + IA (izquierda, fondo gris)
+[x] M8B.4  Input con TextInput multilínea + botón enviar + KeyboardAvoidingView
+[x] M8B.5  TypingIndicator: texto "Escribiendo..." mientras espera respuesta
+[x] M8B.6  Preguntas sugeridas en estado vacío (5 cards tocables que pre-llenan el input)
+[x] M8B.7  Botón "Limpiar" → DELETE /api/v1/chat/history + setMessages([])
+[x] M8B.8  Historial persistente: carga GET /api/v1/chat/history al entrar
+[x] M8B.9  System prompt completo con contexto financiero: ingresos, gastos, deudas, ahorros, préstamos
+[x] M8B.10 Fix teclado oculta el input en Android: KeyboardAvoidingView como wrapper más externo,
+           SafeAreaView con edges={['top','left','right']} adentro + softwareKeyboardLayoutMode: "resize"
+           en app.json (Android) — Expo SDK 51+ cambió el default a "pan" rompiendo KeyboardAvoidingView
+[x] M8B.11 Fix GOOGLE_GENERATIVE_AI_API_KEY no cargada: dotenv usaba process.cwd() (raíz del monorepo)
+           en lugar de la ruta relativa al archivo fuente. Fix: loadEnv({ path: join(__dirname, '../.env') })
+[x] M8B.12 Mensajes de error específicos en useAIChat (sin Alert): banner inline rojo con botón ✕.
+           Distingue: timeout, sin conexión, error 500 servidor, rate limit 429, error genérico
+[x] M8B.13 Timeout de apiClient aumentado de 10s a 60s para soportar respuestas lentas de IA
 ```
 
-### Sprint M4 — Ingresos
+#### M8C — Resumen Mensual y Recomendaciones ✅
 ```
-[ ] M4.1  Hook useIncomes: GET /incomes (con filtros mes/año/fuente)
-[ ] M4.2  Hook useIncomeSummary: GET /incomes/summary/monthly
-[ ] M4.3  Hook useDeleteIncome: DELETE /incomes/:id
-[ ] M4.4  Pantalla Ingresos (en tab "Más"): FlatList de IncomeCard + filtros + paginación
-[ ] M4.5  Componente IncomeCard: color por fuente + descripción + monto + fecha
-[ ] M4.6  IncomeFormSheet (Bottom Sheet): crear/editar ingreso con validación Zod
-[ ] M4.7  Resumen cards: total ingresos del mes + registros + desglose por fuente
-```
-
-### Sprint M5 — Préstamos
-```
-[ ] M5.1  Hook useLoans: GET /loans (con filtros estado/nombre/página)
-[ ] M5.2  Hook useLoan: GET /loans/:id
-[ ] M5.3  Hook useLoanInstallments: GET /loans/:id/installments
-[ ] M5.4  Hook useLoanSummary: GET /loans/summary
-[ ] M5.5  Pantalla Préstamos: grid de LoanCard (2 columnas) + filtros
-[ ] M5.6  Componente LoanCard: avatar + nombre + estado + progreso
-[ ] M5.7  LoanFormSheet (Bottom Sheet): crear préstamo con cálculo automático
-[ ] M5.8  Pantalla Detalle Préstamo /loans/[id]: info financiera + cronograma cuotas
-[ ] M5.9  Componente InstallmentList: FlatList de cuotas con estado visual
-[ ] M5.10 PaymentSheet (Bottom Sheet): registrar pago de cuota
-[ ] M5.11 LoanSummaryCards: total prestado, cobrado, pendiente
+[x] M8C.1  Hook useAIMonthlySummary: POST /api/v1/ai/monthly-summary
+[x] M8C.2  Card "Resumen con IA 🤖" en Dashboard:
+           - Botón "Generar resumen del mes"
+           - ActivityIndicator mientras procesa
+           - Texto generado cuando termina + botón "Regenerar"
+[x] M8C.3  Hook useAIBudgetRecommendations: POST /api/v1/ai/budget-recommendations
+[x] M8C.4  Card "Sugerencias con IA ✨" en tab Presupuesto de Gastos:
+           - Botón "Sugerir presupuestos con IA"
+           - Lista con categoryName + suggestedAmount + reasoning
+           - Botón "Descartar sugerencias"
+[x] M8C.5  Fix recomendaciones vacías con <3 meses de historial: el controller ahora analiza
+           mes actual + últimos 3 meses. Si no hay datos devuelve noDataMessage en lugar de array vacío.
+           Hook expone noDataMessage; UI muestra banner ámbar explicativo + botón "Entendido"
+[x] M8C.6  Botón "Aplicar sugerencia" por cada recomendación de IA: abre BudgetFormSheet
+           pre-llenado con la categoría (búsqueda case-insensitive) y el monto sugerido.
+           Muestra "Aplicado ✓" en verde tras aplicar. Estado se limpia al descartar/refrescar.
+           Props nuevas en BudgetFormSheet: defaultCategoryId? y defaultAmount?
 ```
 
-### Sprint M6 — Deudas
+#### M8D — Asesoría Avanzada ✅
 ```
-[ ] M6.1  Hook useDebts: GET /debts (con filtros estado/página)
-[ ] M6.2  Hook useDebt: GET /debts/:id
-[ ] M6.3  Hook useDeleteDebt: DELETE /debts/:id
-[ ] M6.4  Pantalla Deudas: FlatList de DebtCard + filtros + stat cards
-[ ] M6.5  Componente DebtCard: acreedor + barra de progreso + estado + monto
-[ ] M6.6  DebtFormSheet (Bottom Sheet): crear/editar deuda con validación Zod
-[ ] M6.7  Pantalla Detalle Deuda /debts/[id]: historial de pagos
-[ ] M6.8  PaymentSheet (Bottom Sheet): registrar pago parcial o total
-[ ] M6.9  AIDebtStrategy: card con estrategia de pago (POST /api/v1/ai/debt-strategy)
+[x] M8D.1  Hook useAIDebtStrategy: POST /api/v1/ai/debt-strategy
+[x] M8D.2  Card "Estrategia de pago con IA 🧠" en pantalla Deudas (ListFooter):
+           - Método (avalanche/snowball), explicación, orden de pago, monto mensual, meses estimados
+[x] M8D.3  Hook useAISavingsAdvice: POST /api/v1/ai/savings-advice { goalId }
+[x] M8D.4  Card "Asesoría con IA ✨" en Detalle de Meta de Ahorro:
+           - Viabilidad, evaluación, contribución recomendada, fecha estimada, 3 tips
+[x] M8D.5  Hook useAIAnomalies: POST /api/v1/ai/anomalies + AsyncStorage para descarte mensual
+[x] M8D.6  Card AIAnomalyAlert en Dashboard (background check al cargar):
+           - Si hay anomalías: card ámbar con % de aumento vs promedio
+           - Botón "Descartar" (persiste en AsyncStorage hasta el próximo mes)
 ```
+**Notas de implementación:**
+- Chat usa `generateText` (no streaming) porque React Native no soporta SSE
+- El controller llama servicios Prisma directamente (más eficiente que HTTP calls internas)
+- AsyncStorage instalado: `@react-native-async-storage/async-storage@2.2.0`
+- `req.user.name` no disponible en JWT — el controller consulta la BD para obtenerlo
+- Modelo: `gemini-2.0-flash` (más reciente que el de la web que usaba `gemini-3.1-flash-lite-preview`)
+- `dotenv` en `apps/api/src/app.ts` debe usar ruta explícita: `loadEnv({ path: join(__dirname, '../.env') })`
+  porque Turborepo ejecuta desde la raíz del monorepo y `process.cwd()` no apunta a `apps/api/`
+- `softwareKeyboardLayoutMode: "resize"` es obligatorio en `app.json` (sección android) desde Expo SDK 51+
+  para que `KeyboardAvoidingView` funcione correctamente en Android
+- `KeyboardAvoidingView` debe ser el componente más externo (antes de `SafeAreaView`) en pantallas con input
+- Timeout de `apiClient` fijado en 60 000 ms (60 s) — las llamadas a Gemini pueden superar los 10 s por defecto
+- Errores de IA se muestran como banner inline (no Alert) con mensajes específicos según código HTTP / código axios
 
-### Sprint M7 — Ahorros
+### Sprint M9 — Notificaciones Push ✅ COMPLETADO
 ```
-[ ] M7.1  Hook useSavingGoals: GET /savings
-[ ] M7.2  Hook useSavingGoal: GET /savings/:id
-[ ] M7.3  Hook useSavingGoalProjection: GET /savings/:id/projection
-[ ] M7.4  Hook useDeleteSavingGoal: DELETE /savings/:id
-[ ] M7.5  Pantalla Ahorros: grid de SavingGoalCard (1-2 columnas) + stat cards
-[ ] M7.6  Componente SavingGoalCard: nombre + barra de progreso + tipo + estado
-[ ] M7.7  SavingGoalFormSheet (Bottom Sheet): crear/editar meta con validación Zod
-[ ] M7.8  Pantalla Detalle Meta /savings/[id]: progreso + proyección + historial
-[ ] M7.9  ContributeSheet (Bottom Sheet): registrar aporte
-[ ] M7.10 AISavingsAdvice: card con asesoría IA (POST /api/v1/ai/savings-advice)
+[x] M9.1  Configurar Expo Notifications en app.json (plugin con icon, color #1E3A5F, iosDisplayInForeground)
+[x] M9.2  Solicitar permisos al usuario en primer login mediante hook usePushNotifications
+           Si los permisos son denegados: setPushEnabled(false) en SecureStore y se muestra alerta al usuario
+[x] M9.3  Registrar Expo Push Token en el backend: PUT /api/v1/auth/push-token { token: string | null }
+           Schema Zod valida que empiece con "ExponentPushToken[". Token null = deshabilitar.
+[x] M9.4  Migración BD: campo expoPushToken String? en modelo User (20260322052207_add_expo_push_token)
+[x] M9.5  notifications.service.ts actualizado: sendExpoPushNotification() junto a cada email:
+           - checkUpcomingInstallments → push "⏰ Cuota por vencer"
+           - checkOverdueInstallments  → push "🚨 Cuota vencida"
+           - checkBudgetAlerts         → push "[emoji] Alerta de presupuesto"
+           - checkSavingGoalMilestones → push "[🎉/🚀/⭐] Meta al XX%"
+[x] M9.6  Notificación foreground: setNotificationHandler en usePushNotifications.ts muestra la
+           notificación aunque la app esté abierta (shouldShowAlert: true, shouldPlaySound: true)
+[x] M9.7  Push para cuota vencida y meta de ahorro completada implementados en M9.5
+[x] M9.8  Pantalla Configuración (app/settings/index.tsx): toggle Switch de notificaciones push
+           con ActivityIndicator mientras cambia de estado. Navega desde tab "Más" → Configuración.
 ```
+**Notas de implementación:**
+- Push Token solo disponible en dispositivos reales y Expo Go (no en simuladores/emuladores)
+  → getExpoPushToken() falla silenciosamente en simuladores con try/catch
+- Canal Android "default" configurado con AndroidImportance.MAX y vibración
+- lib/push.ts: helper puro con fetch a https://exp.host/--/api/v2/push/send (sin expo-server-sdk)
+- storage.ts: nuevos métodos getPushEnabled/setPushEnabled en SecureStore (clave: push_notifications_enabled)
+- usePushNotifications: hook que se llama en _layout.tsx cuando isAuthenticated cambia a true
+- more.tsx: "Configuración" habilitado con ruta /settings (antes Sprint M10)
+- El token se registra automáticamente al autenticarse; se desregistra con token: null al deshabilitar
 
-### Sprint M8 — Asistente IA (Chat)
+### Sprint M10 — Configuración + QA + Deploy ✅ PARCIAL (M10.1–M10.6)
 ```
-[ ] M8.1  Migrar endpoints de IA de Next.js Route Handlers → Express API (/api/v1/ai/*)
-[ ] M8.2  Hook useAIChat: manejo de mensajes con streaming (SSE o polling)
-[ ] M8.3  Pantalla AI Chat (en tab "Más"): interfaz de chat tipo WhatsApp
-[ ] M8.4  Componente ChatMessage: burbuja usuario (derecha) + IA (izquierda)
-[ ] M8.5  Componente ChatInput: TextInput multilínea + botón enviar
-[ ] M8.6  TypingIndicator: animación de puntos mientras la IA responde
-[ ] M8.7  Preguntas sugeridas en estado vacío (igual que web)
-[ ] M8.8  Botón "Nueva conversación" (limpia historial via DELETE /chat/history)
-[ ] M8.9  Historial persistente: carga al entrar desde GET /chat/history
-```
-
-### Sprint M9 — Notificaciones Push
-```
-[ ] M9.1  Configurar Expo Notifications en app.json (permisos iOS/Android)
-[ ] M9.2  Solicitar permisos de notificación al usuario en primer login
-[ ] M9.3  Registrar Expo Push Token en el backend (nuevo campo en User)
-[ ] M9.4  Migración BD: agregar campo expoPushToken en modelo User
-[ ] M9.5  Actualizar notification.job.ts: enviar push además de email
-[ ] M9.6  Notificación local: recordatorio de cuota a vencer (foreground)
-[ ] M9.7  Notificación push: cuota vencida, meta de ahorro completada
-[ ] M9.8  Pantalla Configuración: toggle para activar/desactivar notificaciones push
-```
-
-### Sprint M10 — Configuración + QA + Deploy
-```
-[ ] M10.1 Pantalla Settings: editar perfil (nombre, avatar), moneda preferida
-[ ] M10.2 Logout: limpiar Zustand + SecureStore + navegar a login
-[ ] M10.3 Manejo global de errores de red (sin conexión, timeout)
-[ ] M10.4 Empty states en todas las pantallas (ilustraciones o íconos)
-[ ] M10.5 Loading states consistentes (Skeleton en todas las listas)
-[ ] M10.6 Pull-to-refresh en todas las pantallas con listas
+[x] M10.1 Pantalla Settings: editar perfil inline (nombre + moneda PEN/USD)
+          - TextInput para nombre con validación (mín. 2 chars)
+          - Selector de moneda PEN/USD con chips
+          - PUT /auth/profile + setUser en Zustand al guardar
+          - Cancelar restaura los valores originales
+[x] M10.2 Logout: Alert de confirmación → logout() + router.replace('/(auth)/login')
+[x] M10.3 Manejo global de errores de red
+          - network.store.ts (Zustand): isOffline / setOffline
+          - api-client.ts: interceptor detecta ECONNABORTED, ERR_NETWORK, ERR_CANCELED, !response
+            → setOffline(true), auto-oculta a los 4 segundos
+          - _layout.tsx: banner rojo absoluto en top cuando isOffline
+[x] M10.4 Empty states en todas las pantallas (emoji + texto + botón de acción)
+          - loans.tsx, debts.tsx, savings.tsx, expenses.tsx, incomes/index.tsx
+[x] M10.5 Loading states consistentes (SkeletonList en todas las listas)
+          - SkeletonCard.tsx: animación de opacity pulsante con Animated de RN
+          - SkeletonList: renderiza N SkeletonCard apilados
+          - Aplicado en: loans.tsx, debts.tsx, savings.tsx, expenses.tsx, incomes/index.tsx
+[x] M10.6 Pull-to-refresh en todas las pantallas con listas
+          - RefreshControl en todos los FlatList de lista y resumen
 [ ] M10.7 Pruebas en Android (emulador + dispositivo físico)
 [ ] M10.8 Pruebas en iOS (simulador + dispositivo físico)
 [ ] M10.9 Configurar EAS Build (Expo Application Services) para generar APK/IPA
 [ ] M10.10 Deploy en Expo Go para pruebas internas (QR code)
-[ ] M10.11 Generar build de producción: APK (Android) + IPA (iOS)
+[ ] M10.11 ⚠️ ANTES DEL BUILD: Verificar notificaciones push en Android
+           - En usePushNotifications.ts, confirmar que isRemotePushSupported detecta
+             correctamente el build (Constants.appOwnership !== 'expo' en EAS builds)
+           - Probar registerForPushNotifications() en un development build de Android
+           - Verificar que el token llega correctamente al backend (PUT /auth/push-token)
+           - Verificar que las notificaciones push se reciben en dispositivo físico
+[ ] M10.12 Generar build de producción: APK (Android) + IPA (iOS)
 ```
 
 ---
@@ -512,7 +670,7 @@ import { VictoryPie, VictoryBar } from 'victory-native';
 | Modales/Forms | Dialog (shadcn/ui) | Bottom Sheet (@gorhom) |
 | Listas | `map()` + `div` | `FlatList` / `SectionList` |
 | Animaciones | Framer Motion | React Native Reanimated |
-| Gráficas | Recharts | Victory Native + Skia |
+| Gráficas | Recharts | Barras nativas con View (Victory Native descartado — incompatible con Expo Go + RN 0.83) |
 | Token storage | localStorage | Expo SecureStore |
 | Íconos | Lucide React | @expo/vector-icons (Ionicons) |
 | Navegación global | Links de Next.js | Expo Router (`router.push`) |
@@ -573,12 +731,11 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:4000/api/v1
 
 | Tecnología | Documentación |
 |-----------|---------------|
-| Expo SDK 52 | https://docs.expo.dev |
+| Expo SDK 55 | https://docs.expo.dev |
 | Expo Router v4 | https://docs.expo.dev/router/introduction |
 | NativeWind v4 | https://www.nativewind.dev |
 | React Native Reanimated | https://docs.swmansion.com/react-native-reanimated |
 | @gorhom/bottom-sheet | https://gorhom.dev/react-native-bottom-sheet |
-| Victory Native | https://commerce.nearform.com/open-source/victory-native |
 | Expo SecureStore | https://docs.expo.dev/sdk/securestore |
 | Expo Notifications | https://docs.expo.dev/sdk/notifications |
 | EAS Build | https://docs.expo.dev/build/introduction |
@@ -589,6 +746,7 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:4000/api/v1
 
 ---
 
-*Versión: 1.0 — Fase 2 Mobile*
+*Versión: 2.0 — Fase 2 Mobile*
 *Autor: Alexander Gomez*
 *Última actualización: Marzo 2026*
+*Sprints completados: M1 ✅, M2 ✅*

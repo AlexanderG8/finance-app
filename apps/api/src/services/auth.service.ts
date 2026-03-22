@@ -7,6 +7,7 @@ import type {
   RegisterInput,
   LoginInput,
   UpdateProfileInput,
+  PushTokenInput,
 } from '../schemas/auth.schema';
 
 const SALT_ROUNDS = 12;
@@ -183,6 +184,13 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
   });
 
   return formatUser(user);
+}
+
+export async function registerPushToken(userId: string, input: PushTokenInput): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { expoPushToken: input.token },
+  });
 }
 
 export async function forgotPassword(email: string): Promise<void> {

@@ -1,12 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
+import { useNetworkStore } from '@/stores/network.store';
 
 // On Android emulator use 10.0.2.2, on physical device use your local IP
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:4000/api/v1';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -81,6 +82,19 @@ apiClient.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Detect network errors (no connection, timeout, server unreachable)
+    const isNetworkError =
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ERR_CANCELED' ||
+      !error.response;
+
+    if (isNetworkError) {
+      useNetworkStore.getState().setOffline(true);
+      // Auto-hide banner after 4 seconds
+      setTimeout(() => useNetworkStore.getState().setOffline(false), 4000);
     }
 
     return Promise.reject(error);

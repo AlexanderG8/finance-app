@@ -54,15 +54,21 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="debts"
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="💳" />,
+        }}
+      />
+      <Tabs.Screen
         name="savings"
         options={{
           tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="🐷" />,
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="more"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="👤" />,
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="☰" />,
         }}
       />
     </Tabs>

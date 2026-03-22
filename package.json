@@ -13,7 +13,7 @@
     "test": "turbo run test",
     "web": "cd apps/web && npm run dev",
     "api": "cd apps/api && npm run dev",
-    "mobile": "cd apps/mobile && npx expo start",
+    "mobile": "cd apps/mobile && npx expo start --clear",
     "mobile:android": "cd apps/mobile && npx expo start --android",
     "db:migrate": "cd apps/api && npx prisma migrate dev",
     "db:studio": "cd apps/api && npx prisma studio",

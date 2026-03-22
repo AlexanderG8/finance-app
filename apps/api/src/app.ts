@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import { join } from 'path';
+// Load .env from apps/api/ regardless of the working directory (turborepo runs from root)
+loadEnv({ path: join(__dirname, '../.env') });
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -11,6 +14,7 @@ import debtsRoutes from './routes/debts.routes';
 import savingsRoutes from './routes/savings.routes';
 import incomeRoutes from './routes/income.routes';
 import chatRoutes from './routes/chat.routes';
+import aiRoutes from './routes/ai.routes';
 import { authMiddleware } from './middlewares/auth.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { startNotificationJobs } from './jobs/notification.job';
@@ -184,6 +188,7 @@ app.use('/api/v1/debts', debtsRoutes);
 app.use('/api/v1/savings', savingsRoutes);
 app.use('/api/v1/incomes', incomeRoutes);
 app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/dashboard', dashboardRouter);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
