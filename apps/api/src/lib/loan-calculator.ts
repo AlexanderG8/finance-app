@@ -1,5 +1,6 @@
 interface LoanCalculationInput {
   principal: number;
+  interestRate: number;        // decimal: 0.15 for 15%
   numberOfInstallments: number;
 }
 
@@ -11,10 +12,11 @@ interface InstallmentSchedule {
 
 interface LoanCalculationResult {
   principal: number;
-  interestRate: number;
-  interestAmount: number;
-  totalAmount: number;
-  installmentAmount: number;
+  interestRate: number;        // decimal: 0.15 for 15%
+  interestAmount: number;      // interés fijo por cuota (principal * interestRate)
+  totalAmount: number;         // installmentAmount * numberOfInstallments
+  installmentAmount: number;   // (principal / numberOfInstallments) + interestAmount
+  totalProfit: number;         // interestAmount * numberOfInstallments (ganancia total)
   installments: InstallmentSchedule[];
 }
 
@@ -22,19 +24,23 @@ export function calculateLoan(
   input: LoanCalculationInput,
   loanDate: Date
 ): LoanCalculationResult {
-  const { principal, numberOfInstallments } = input;
+  const { principal, interestRate, numberOfInstallments } = input;
 
-  // REGLA DE NEGOCIO: Tasa según monto
-  // < 1000 soles → 15% | >= 1000 soles → 20%
-  const interestRate = principal < 1000 ? 0.15 : 0.20;
+  // Interés total que se cobra en CADA cuota (no se divide entre cuotas)
+  const interestAmount = Math.round(principal * interestRate * 100) / 100;
 
-  const interestAmount = principal * interestRate;
-  const totalAmount = principal + interestAmount;
+  // Capital por cuota
+  const principalPerInstallment = Math.round((principal / numberOfInstallments) * 100) / 100;
 
-  // Redondear a 2 decimales para evitar errores de punto flotante
-  const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
+  // Cuota = capital/n + interés total
+  const installmentAmount = Math.round((principalPerInstallment + interestAmount) * 100) / 100;
 
-  // Generar schedule de cuotas (mensual por defecto)
+  // Total a cobrar = cuota × n
+  const totalAmount = Math.round(installmentAmount * numberOfInstallments * 100) / 100;
+
+  // Ganancia total = interés cobrado en todas las cuotas
+  const totalProfit = Math.round(interestAmount * numberOfInstallments * 100) / 100;
+
   const installments: InstallmentSchedule[] = Array.from(
     { length: numberOfInstallments },
     (_, index) => {
@@ -54,6 +60,7 @@ export function calculateLoan(
     interestAmount,
     totalAmount,
     installmentAmount,
+    totalProfit,
     installments,
   };
 }

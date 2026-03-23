@@ -26,6 +26,7 @@ export interface LoanFormData {
   borrowerName: string;
   borrowerContact: string;
   principal: string;
+  interestRate: string;
   currency: string;
   numberOfInstallments: string;
   deliveryMethod: string;
@@ -44,12 +45,19 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function calcPreview(principal: number, installments: number): { rate: number; total: number; monthly: number } | null {
-  if (!principal || !installments || principal <= 0 || installments <= 0) return null;
-  const rate = principal < 1000 ? 0.15 : 0.20;
-  const total = principal + principal * rate;
-  const monthly = Math.round((total / installments) * 100) / 100;
-  return { rate, total, monthly };
+function calcPreview(principal: number, interestRate: number, installments: number) {
+  const p = isNaN(principal) || principal <= 0 ? 0 : principal;
+  const r = isNaN(interestRate) || interestRate <= 0 ? 0 : interestRate / 100;
+  const n = isNaN(installments) || installments <= 0 ? 0 : installments;
+  if (p === 0 || n === 0) {
+    return { interestAmount: 0, installmentAmount: 0, totalAmount: 0, totalProfit: 0 };
+  }
+  const interestAmount = Math.round(p * r * 100) / 100;
+  const principalPerInstallment = Math.round((p / n) * 100) / 100;
+  const installmentAmount = Math.round((principalPerInstallment + interestAmount) * 100) / 100;
+  const totalAmount = Math.round(installmentAmount * n * 100) / 100;
+  const totalProfit = Math.round(interestAmount * n * 100) / 100;
+  return { interestAmount, installmentAmount, totalAmount, totalProfit };
 }
 
 export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: LoanFormSheetProps) {
@@ -57,6 +65,7 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
     borrowerName: '',
     borrowerContact: '',
     principal: '',
+    interestRate: '15',
     currency: 'PEN',
     numberOfInstallments: '',
     deliveryMethod: 'CASH',
@@ -73,6 +82,7 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
       borrowerName: '',
       borrowerContact: '',
       principal: '',
+      interestRate: '15',
       currency: 'PEN',
       numberOfInstallments: '',
       deliveryMethod: 'CASH',
@@ -82,8 +92,9 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
   }
 
   const principalNum = parseFloat(form.principal);
+  const interestRateNum = parseFloat(form.interestRate);
   const installmentsNum = parseInt(form.numberOfInstallments, 10);
-  const preview = calcPreview(principalNum, installmentsNum);
+  const preview = calcPreview(principalNum, interestRateNum, installmentsNum);
 
   async function handleSubmit() {
     if (!form.borrowerName.trim()) {
@@ -92,6 +103,10 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
     }
     if (!form.principal || isNaN(principalNum) || principalNum <= 0) {
       Alert.alert('Validación', 'Ingresa un monto principal válido');
+      return;
+    }
+    if (!form.interestRate || isNaN(interestRateNum) || interestRateNum <= 0) {
+      Alert.alert('Validación', 'Ingresa una tasa de interés válida');
       return;
     }
     if (!form.numberOfInstallments || isNaN(installmentsNum) || installmentsNum < 1) {
@@ -125,6 +140,27 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
         </View>
 
         <ScrollView className="flex-1 px-5 pt-4" keyboardShouldPersistTaps="handled">
+          {/* Preview — siempre visible, se actualiza en tiempo real */}
+          <View style={{ backgroundColor: '#EFF6FF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#BFDBFE' }}>
+            <Text className="text-xs font-semibold text-primary mb-3">Vista previa del préstamo</Text>
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-xs text-slate-500">Interés por cuota ({interestRateNum || 0}%)</Text>
+              <Text className="text-xs font-semibold text-amber-500">{formatCurrency(preview.interestAmount)}</Text>
+            </View>
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-xs text-slate-500">Cuota mensual</Text>
+              <Text className="text-xs font-bold text-primary">{formatCurrency(preview.installmentAmount)}</Text>
+            </View>
+            <View style={{ borderTopWidth: 1, borderColor: '#BFDBFE', paddingTop: 8, marginTop: 4 }} className="flex-row justify-between mb-2">
+              <Text className="text-xs font-semibold text-slate-700">Total a cobrar</Text>
+              <Text className="text-xs font-bold text-slate-700">{formatCurrency(preview.totalAmount)}</Text>
+            </View>
+            <View className="flex-row justify-between">
+              <Text className="text-xs text-slate-500">Ganancia total</Text>
+              <Text className="text-xs font-bold text-green-600">{formatCurrency(preview.totalProfit)}</Text>
+            </View>
+          </View>
+
           {/* Prestatario */}
           <Text className="text-xs text-slate-500 mb-1 font-medium">NOMBRE DEL PRESTATARIO</Text>
           <TextInput
@@ -144,7 +180,7 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
             onChangeText={(v) => set('borrowerContact', v)}
           />
 
-          {/* Monto */}
+          {/* Monto + moneda */}
           <Text className="text-xs text-slate-500 mb-1 font-medium">MONTO PRINCIPAL</Text>
           <View className="flex-row gap-2 mb-3">
             <TextInput
@@ -171,15 +207,16 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
             </View>
           </View>
 
-          {/* Tasa info */}
-          {principalNum > 0 && (
-            <View className="bg-blue-50 rounded-xl px-4 py-2 mb-3 flex-row items-center gap-2">
-              <Text className="text-xs text-blue-600">
-                Tasa de interés: {principalNum < 1000 ? '15%' : '20%'}
-                {' '}(préstamos {principalNum < 1000 ? 'menores' : 'mayores o iguales'} a S/ 1,000)
-              </Text>
-            </View>
-          )}
+          {/* Tasa de interés */}
+          <Text className="text-xs text-slate-500 mb-1 font-medium">TASA DE INTERÉS (%)</Text>
+          <TextInput
+            className="bg-white rounded-xl px-4 py-3 text-sm text-slate-800 border border-slate-100 mb-4"
+            placeholder="Ej: 15"
+            placeholderTextColor="#94a3b8"
+            keyboardType="decimal-pad"
+            value={form.interestRate}
+            onChangeText={(v) => set('interestRate', v)}
+          />
 
           {/* Cuotas */}
           <Text className="text-xs text-slate-500 mb-1 font-medium">NÚMERO DE CUOTAS</Text>
@@ -191,31 +228,6 @@ export function LoanFormSheet({ visible, onClose, onSubmit, isSubmitting }: Loan
             value={form.numberOfInstallments}
             onChangeText={(v) => set('numberOfInstallments', v)}
           />
-
-          {/* Preview */}
-          {preview && (
-            <View className="bg-white rounded-2xl p-4 border border-slate-100 mb-4">
-              <Text className="text-xs font-semibold text-primary mb-3">Vista previa del préstamo</Text>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-xs text-slate-500">Principal</Text>
-                <Text className="text-xs font-semibold text-slate-700">{formatCurrency(principalNum)}</Text>
-              </View>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-xs text-slate-500">Interés ({(preview.rate * 100).toFixed(0)}%)</Text>
-                <Text className="text-xs font-semibold text-amber-500">
-                  +{formatCurrency(principalNum * preview.rate)}
-                </Text>
-              </View>
-              <View className="flex-row justify-between mb-2 pt-2 border-t border-slate-100">
-                <Text className="text-xs font-semibold text-slate-700">Total a cobrar</Text>
-                <Text className="text-xs font-bold text-primary">{formatCurrency(preview.total)}</Text>
-              </View>
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-slate-500">Cuota mensual</Text>
-                <Text className="text-xs font-bold text-green-600">{formatCurrency(preview.monthly)}</Text>
-              </View>
-            </View>
-          )}
 
           {/* Método de entrega */}
           <Text className="text-xs text-slate-500 mb-2 font-medium">MÉTODO DE ENTREGA</Text>

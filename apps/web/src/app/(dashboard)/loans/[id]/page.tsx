@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
   ChevronRight,
   Edit,
+  Trash2,
   DollarSign,
   TrendingUp,
   Percent,
@@ -26,9 +28,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import {
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { LoanStatusBadge } from '@/components/loans/LoanStatusBadge';
 import { InstallmentSchedule } from '@/components/loans/InstallmentSchedule';
-import { useLoan, useLoanInstallments, useUpdateLoan } from '@/hooks/useLoans';
+import { useLoan, useLoanInstallments, useUpdateLoan, useDeleteLoan } from '@/hooks/useLoans';
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -51,12 +56,15 @@ interface LoanDetailPageProps {
 
 export default function LoanDetailPage({ params }: LoanDetailPageProps) {
   const { id } = params;
+  const router = useRouter();
   const { loan, isLoading, refetch } = useLoan(id);
   const { installments, isLoading: installmentsLoading, refetch: refetchInstallments } =
     useLoanInstallments(id);
   const { updateLoan, isLoading: updating } = useUpdateLoan();
+  const { deleteLoan, isLoading: deleting } = useDeleteLoan();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editNotes, setEditNotes] = useState('');
 
   function openEdit() {
@@ -69,6 +77,12 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
     await updateLoan({ id: loan.id, notes: editNotes });
     setIsEditOpen(false);
     refetch();
+  }
+
+  async function handleDeleteLoan() {
+    if (!loan) return;
+    const ok = await deleteLoan(loan.id);
+    if (ok) router.push('/loans');
   }
 
   function handlePaymentSuccess() {
@@ -165,6 +179,13 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
       color: 'text-slate-600',
       bg: 'bg-slate-100',
     },
+    {
+      label: 'Ganancia total',
+      value: formatCurrency(loan.totalProfit ?? 0, loan.currency),
+      icon: TrendingUp,
+      color: 'text-green-600',
+      bg: 'bg-green-50',
+    },
   ];
 
   return (
@@ -199,15 +220,26 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
               )}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-slate-600"
-            onClick={openEdit}
-          >
-            <Edit className="h-4 w-4" />
-            Editar notas
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-slate-600"
+              onClick={openEdit}
+            >
+              <Edit className="h-4 w-4" />
+              Editar notas
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+              onClick={() => setIsDeleteOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar
+            </Button>
+          </div>
         </div>
 
         {/* Info cards */}
@@ -260,6 +292,33 @@ export default function LoanDetailPage({ params }: LoanDetailPageProps) {
           />
         )}
       </div>
+
+      {/* Delete loan dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Eliminar préstamo</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar el préstamo de{' '}
+              <span className="font-medium text-[#1E293B]">"{loan.borrowerName}"</span>?
+              Se eliminarán todas las cuotas y pagos asociados. Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteLoan}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit notes modal */}
       <Dialog open={isEditOpen} onOpenChange={(open) => { if (!open) setIsEditOpen(false); }}>

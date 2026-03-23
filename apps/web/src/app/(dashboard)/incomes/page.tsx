@@ -15,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { IncomeFormModal } from '@/components/incomes/IncomeFormModal';
 import { useIncomes, useIncomeSummary, useDeleteIncome } from '@/hooks/useIncomes';
 import { formatCurrency } from '@/lib/utils';
@@ -55,6 +63,7 @@ export default function IncomesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<Income | undefined>(undefined);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Income | null>(null);
 
   const { incomes, pagination, isLoading, refetch } = useIncomes({
     month,
@@ -83,10 +92,11 @@ export default function IncomesPage() {
     setEditingIncome(undefined);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este ingreso?')) return;
-    setDeletingId(id);
-    const ok = await deleteIncome.execute(id);
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    setDeleteTarget(null);
+    const ok = await deleteIncome.execute(deleteTarget.id);
     setDeletingId(null);
     if (ok) handleSuccess();
   }
@@ -308,7 +318,7 @@ export default function IncomesPage() {
                             size="icon"
                             className="h-8 w-8 text-slate-400 hover:text-red-600"
                             disabled={deletingId === income.id}
-                            onClick={() => handleDelete(income.id)}
+                            onClick={() => setDeleteTarget(income)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -356,6 +366,32 @@ export default function IncomesPage() {
         income={editingIncome}
         onSuccess={handleSuccess}
       />
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Eliminar ingreso</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar el ingreso{' '}
+              <span className="font-medium text-[#1E293B]">"{deleteTarget?.description}"</span>?
+              Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={!!deletingId}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

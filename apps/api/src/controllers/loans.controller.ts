@@ -99,3 +99,12 @@ export async function payInstallment(req: Request, res: Response, next: NextFunc
     next(error);
   }
 }
+
+export async function deleteLoan(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await loansService.deleteLoan(req.user.id, req.params['id'] as string);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}

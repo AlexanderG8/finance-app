@@ -11,9 +11,11 @@ export interface Loan {
   principal: number;
   currency: string;
   interestRate: number;
+  interestAmount: number;
   totalAmount: number;
   numberOfInstallments: number;
   installmentAmount: number;
+  totalProfit: number;
   deliveryMethod: string;
   loanDate: string;
   status: LoanStatus;
@@ -137,4 +139,22 @@ export function useLoanSummary() {
   }, []);
 
   return { summary, isLoading, fetchSummary };
+}
+
+export function useDeleteLoan() {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deleteLoan = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      setIsDeleting(true);
+      await apiClient.delete(`/loans/${id}`);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsDeleting(false);
+    }
+  }, []);
+
+  return { deleteLoan, isDeleting };
 }

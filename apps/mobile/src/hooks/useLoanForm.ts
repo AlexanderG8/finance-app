@@ -6,6 +6,7 @@ interface CreateLoanPayload {
   borrowerName: string;
   borrowerContact?: string;
   principal: number;
+  interestRate: number;  // porcentaje, ej: 15 para 15%
   currency: string;
   numberOfInstallments: number;
   deliveryMethod: string;

@@ -394,7 +394,7 @@ import { VictoryPie, VictoryBar } from 'victory-native';
 [x] M2.6  Componente ExpensesPieChart (barras de progreso nativas por categoría con porcentaje)
 [x] M2.7  Componente UpcomingPayments (lista combinada préstamos + deudas, badges de urgencia)
 [x] M2.8  Card "Estado de préstamos" (activos / completados / vencidos / total cobrado)
-[x] M2.9  Balance card principal (Ingresos − Gastos − Deudas = balance en color verde/rojo)
+[x] M2.9  Balance card principal con desglose completo (ver notas)
 [x] M2.10 Pull-to-refresh en Dashboard (RefreshControl con Promise.all)
 [ ] M2.11 AIMonthlySummary → movido a Sprint M8
 [ ] M2.12 AIAnomalyAlert → movido a Sprint M8
@@ -408,6 +408,8 @@ import { VictoryPie, VictoryBar } from 'victory-native';
 - `upcoming-payments` devuelve `{ loanInstallments: [], debts: [] }` — hay que combinar y mapear manualmente
 - Tab "profile" eliminado — reemplazado por "debts" (💳) y "more" (☰)
 - Archivos creados: `src/constants/colors.ts`, `src/lib/utils.ts`, `src/hooks/useDashboard.ts`, `src/hooks/useUpcomingPayments.ts`, `src/components/dashboard/`
+- **Balance card** muestra dos filas: entradas (Ingresos, Deudas recibidas, Cobros) y salidas (Gastos, Pago deudas, Prestado). Solo se muestran los conceptos con valor > 0.
+- `useDashboard` incluye los campos: `debtReceived.total`, `loanDisbursements.total`, `loanCollections.total`
 
 ### Sprint M3 — Gastos ✅ COMPLETADO
 ```
@@ -462,8 +464,16 @@ import { VictoryPie, VictoryBar } from 'victory-native';
 [x] M5.11 Summary card: Por cobrar / Cobrado / Activos / Vencidos
 ```
 **Notas de implementación:**
-- Interés calculado en el servidor (loan-calculator.ts): <S/1,000 → 15%, ≥S/1,000 → 20%
-- LoanFormSheet muestra preview en tiempo real del total e interés antes de crear
+- El usuario ingresa la tasa de interés deseada (%) en el formulario; el service la convierte a decimal (÷100)
+- **Nueva fórmula de interés**: el interés total se aplica a CADA cuota (no se divide entre cuotas)
+  - `interestAmount = principal × rate` (fijo por cuota)
+  - `installmentAmount = (principal/n) + interestAmount`
+  - `totalProfit = interestAmount × n` (ganancia total visible en LoanCard y detalle)
+- **LoanFormSheet**: la card de "Vista previa del préstamo" está siempre visible al tope del formulario (no condicional), se actualiza en tiempo real al escribir. Se usaron `style` inline en lugar de solo NativeWind para garantizar renderizado dentro de Modal.
+- **Validación de balance**: antes de crear, el service verifica `balance >= principal` (balance del mes en curso)
+- **Eliminar préstamo**: `useDeleteLoan` hook + Alert.alert de confirmación en LoanCard y detalle /loans/[id]
+- LoanCard muestra `totalProfit` en verde
+- /loans/[id] muestra `interestAmount` por cuota, `totalProfit` y botón "🗑 Eliminar" en el header
 - payInstallment valida que el monto no supere el pendiente de la cuota
 - Detalle incluye: progreso de cobro (barra), cobrado vs pendiente, cronograma completo
 - Métodos de pago/entrega: YAPE, PLIN, BANK_TRANSFER, CASH (sin CREDIT_CARD)
@@ -661,6 +671,29 @@ import { VictoryPie, VictoryBar } from 'victory-native';
 
 ---
 
+## 🛠️ Mejoras Adicionales implementadas (post Sprint M10)
+
+### Balance real del dashboard (Web + Mobile)
+El endpoint `GET /dashboard/summary` retorna ahora todos los componentes del balance:
+```
+income         → ingresos del mes           (+)
+debtReceived   → deudas registradas el mes  (+) al registrar una deuda, ese dinero suma al balance
+loanCollections → cobros de cuotas el mes   (+)
+expenses       → gastos del mes             (−)
+debtPayments   → pagos de deudas el mes     (−)
+loanDisbursements → préstamos desembolsados (−)
+balance = income + debtReceived + loanCollections − expenses − debtPayments − loanDisbursements
+```
+
+### Nueva lógica de préstamos (Web + Mobile)
+- **Interés por cuota**: el interés total (`principal × rate`) se cobra en CADA cuota, no se divide.
+- **Tasa configurable**: el usuario ingresa el porcentaje de interés que desea cobrar.
+- **totalProfit**: nueva columna en DB — ganancia total del préstamo (`interestAmount × n`).
+- **Validación de balance**: no se puede crear un préstamo si el balance del mes es insuficiente.
+- **Eliminar préstamo**: `DELETE /api/v1/loans/:id` — cascade elimina cuotas y pagos.
+
+---
+
 ## 🔄 Diferencias Clave Web vs Mobile
 
 | Concepto | Web (Next.js) | Mobile (React Native) |
@@ -746,7 +779,7 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:4000/api/v1
 
 ---
 
-*Versión: 2.0 — Fase 2 Mobile*
+*Versión: 2.1 — Fase 2 Mobile*
 *Autor: Alexander Gomez*
 *Última actualización: Marzo 2026*
-*Sprints completados: M1 ✅, M2 ✅*
+*Sprints completados: M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅, M7 ✅, M8 ✅, M9 ✅, M10 📋 Parcial*

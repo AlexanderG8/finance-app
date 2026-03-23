@@ -33,7 +33,9 @@ export interface Loan {
   principal: number;
   currency: Currency;
   interestRate: number;
+  interestAmount: number;
   totalAmount: number;
+  totalProfit: number;
   numberOfInstallments: number;
   installmentAmount: number;
   deliveryMethod: PaymentMethod;

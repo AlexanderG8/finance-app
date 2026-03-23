@@ -7,6 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { DebtStatusBadge } from './DebtStatusBadge';
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
 import type { PersonalDebt } from '@finance-app/shared';
@@ -26,7 +34,7 @@ interface DebtCardProps {
 }
 
 export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
 
   const progressPercent =
@@ -39,16 +47,8 @@ export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
 
   const remaining = debt.totalAmount - debt.paidAmount;
 
-  function handleDeleteClick() {
-    if (confirmDelete) {
-      onDelete();
-      setConfirmDelete(false);
-    } else {
-      setConfirmDelete(true);
-    }
-  }
-
   return (
+    <>
     <Card className="hover:shadow-md transition-shadow duration-200">
       <CardContent className="p-5">
         {/* Header */}
@@ -124,68 +124,70 @@ export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
 
         {/* Actions */}
         <div className="mt-4 flex items-center justify-end gap-2">
-          {confirmDelete ? (
-            <>
-              <span className="text-xs text-red-600 mr-1">¿Confirmar eliminación?</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmDelete(false)}
-                className="text-xs"
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteClick}
-                className="text-xs"
-              >
-                Eliminar
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/debts/${debt.id}`)}
-                className="gap-1 text-xs text-[#2E86AB] border-[#2E86AB] hover:bg-blue-50"
-              >
-                <Eye className="h-3 w-3" />
-                Ver pagos
-              </Button>
-              {debt.status !== 'PAID' && (
-                <Button
-                  size="sm"
-                  onClick={onPay}
-                  className="gap-1 bg-[#1E3A5F] hover:bg-[#2E86AB] text-xs"
-                >
-                  <DollarSign className="h-3 w-3" />
-                  Pagar
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onEdit}
-                className="gap-1 text-xs"
-              >
-                <Edit className="h-3 w-3" />
-                Editar
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDeleteClick}
-                className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-xs"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/debts/${debt.id}`)}
+            className="gap-1 text-xs text-[#2E86AB] border-[#2E86AB] hover:bg-blue-50"
+          >
+            <Eye className="h-3 w-3" />
+            Ver pagos
+          </Button>
+          {debt.status !== 'PAID' && (
+            <Button
+              size="sm"
+              onClick={onPay}
+              className="gap-1 bg-[#1E3A5F] hover:bg-[#2E86AB] text-xs"
+            >
+              <DollarSign className="h-3 w-3" />
+              Pagar
+            </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            className="gap-1 text-xs"
+          >
+            <Edit className="h-3 w-3" />
+            Editar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-xs"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
       </CardContent>
     </Card>
+
+    <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>Eliminar deuda</DialogTitle>
+          <DialogDescription>
+            ¿Estás seguro de que deseas eliminar la deuda con{' '}
+            <span className="font-medium text-[#1E293B]">"{debt.creditorName}"</span>?
+            Esta acción no se puede deshacer.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => { setShowDeleteDialog(false); onDelete(); }}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Eliminar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

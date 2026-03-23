@@ -175,6 +175,9 @@ export default function DashboardPage() {
             income={data?.income.total ?? 0}
             expenses={data?.expenses.total ?? 0}
             debtPayments={data?.debtPayments.total ?? 0}
+            debtReceived={data?.debtReceived.total ?? 0}
+            loanDisbursements={data?.loanDisbursements.total ?? 0}
+            loanCollections={data?.loanCollections.total ?? 0}
             balance={data?.balance ?? 0}
             month={data?.currentMonth.month ?? new Date().getMonth() + 1}
             year={data?.currentMonth.year ?? new Date().getFullYear()}

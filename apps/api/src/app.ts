@@ -55,7 +55,7 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    const [loanSummary, monthlySummary, incomeSummary, debtsList, savingGoals, debtPaymentsAggregate] = await Promise.all([
+    const [loanSummary, monthlySummary, incomeSummary, debtsList, savingGoals, debtPaymentsAggregate, debtReceivedAggregate, loanDisbursementsAggregate, loanCollectionsAggregate] = await Promise.all([
       loansService.getLoanSummary(req.user.id),
       expensesService.getMonthlySummary(req.user.id, month, year),
       incomeService.getMonthlyIncomeSummary(req.user.id, month, year),
@@ -64,6 +64,24 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
       prisma.debtPayment.aggregate({
         where: {
           debt: { userId: req.user.id },
+          paidAt: { gte: monthStart, lte: monthEnd },
+        },
+        _sum: { amount: true },
+      }),
+      // Deudas recibidas este mes (suman al balance — dinero que te prestaron)
+      prisma.personalDebt.aggregate({
+        where: { userId: req.user.id, createdAt: { gte: monthStart, lte: monthEnd } },
+        _sum: { totalAmount: true },
+      }),
+      // Préstamos desembolsados este mes (restan al balance)
+      prisma.loan.aggregate({
+        where: { userId: req.user.id, loanDate: { gte: monthStart, lte: monthEnd } },
+        _sum: { principal: true },
+      }),
+      // Cobros de cuotas de préstamos este mes (suman al balance)
+      prisma.loanPayment.aggregate({
+        where: {
+          installment: { loan: { userId: req.user.id } },
           paidAt: { gte: monthStart, lte: monthEnd },
         },
         _sum: { amount: true },
@@ -79,6 +97,17 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
       0
     );
     const debtPaymentsTotal = Number(debtPaymentsAggregate._sum.amount ?? 0);
+    const debtReceivedTotal = Number(debtReceivedAggregate._sum.totalAmount ?? 0);
+    const loanDisbursementsTotal = Number(loanDisbursementsAggregate._sum.principal ?? 0);
+    const loanCollectionsTotal = Number(loanCollectionsAggregate._sum.amount ?? 0);
+
+    const balance =
+      incomeSummary.totalAmount +
+      debtReceivedTotal -
+      monthlySummary.totalAmount -
+      debtPaymentsTotal -
+      loanDisbursementsTotal +
+      loanCollectionsTotal;
 
     res.status(200).json({
       success: true,
@@ -93,7 +122,10 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
           bySource: incomeSummary.bySource,
         },
         debtPayments: { total: debtPaymentsTotal },
-        balance: incomeSummary.totalAmount - monthlySummary.totalAmount - debtPaymentsTotal,
+        debtReceived: { total: debtReceivedTotal },
+        loanDisbursements: { total: loanDisbursementsTotal },
+        loanCollections: { total: loanCollectionsTotal },
+        balance,
         loans: loanSummary,
         debts: { totalPending: totalDebts },
         savings: { totalSaved: totalSavings, goalsCount: savingGoals.length },

@@ -150,9 +150,11 @@ model Loan {
   principal            Decimal       @db.Decimal(12, 2)
   currency             Currency      @default(PEN)
   interestRate         Decimal       @db.Decimal(5, 4)
+  interestAmount       Decimal       @db.Decimal(12, 2) @default(0)
   totalAmount          Decimal       @db.Decimal(12, 2)
   numberOfInstallments Int
   installmentAmount    Decimal       @db.Decimal(12, 2)
+  totalProfit          Decimal       @db.Decimal(12, 2) @default(0)
   deliveryMethod       PaymentMethod
   loanDate             DateTime
   status               LoanStatus    @default(ACTIVE)

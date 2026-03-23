@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Loan, LoanStatus } from '@/hooks/useLoans';
@@ -11,14 +11,23 @@ const STATUS_CONFIG: Record<LoanStatus, { label: string; color: string; bg: stri
 
 interface LoanCardProps {
   loan: Loan;
+  onDelete?: () => void;
 }
 
-export function LoanCard({ loan }: LoanCardProps) {
+export function LoanCard({ loan, onDelete }: LoanCardProps) {
   const router = useRouter();
   const config = STATUS_CONFIG[loan.status];
-  const collectedPct = loan.totalAmount > 0
-    ? Math.min((loan.principal * loan.interestRate + loan.principal - loan.principal) / loan.totalAmount * 100, 100)
-    : 0;
+
+  function handleDeletePress() {
+    Alert.alert(
+      'Eliminar préstamo',
+      `¿Estás seguro de que deseas eliminar el préstamo de "${loan.borrowerName}"? Se eliminarán todas las cuotas y pagos. Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: () => onDelete?.() },
+      ]
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -47,7 +56,7 @@ export function LoanCard({ loan }: LoanCardProps) {
         </View>
       </View>
 
-      <View className="flex-row justify-between mb-3">
+      <View className="flex-row justify-between mb-2">
         <View>
           <Text className="text-xs text-slate-400">Principal</Text>
           <Text className="text-sm font-semibold text-slate-700">{formatCurrency(loan.principal)}</Text>
@@ -62,11 +71,26 @@ export function LoanCard({ loan }: LoanCardProps) {
         </View>
       </View>
 
+      {loan.totalProfit > 0 && (
+        <View className="mb-2 flex-row items-center gap-1">
+          <Text className="text-xs text-green-600 font-medium">
+            Ganancia: {formatCurrency(loan.totalProfit)}
+          </Text>
+        </View>
+      )}
+
       <View className="flex-row justify-between items-center">
         <Text className="text-xs text-slate-400">
           {loan.numberOfInstallments} cuotas · {formatDate(loan.loanDate)}
         </Text>
-        <Text className="text-xs text-accent font-medium">Ver detalle ›</Text>
+        <View className="flex-row items-center gap-3">
+          {onDelete && (
+            <TouchableOpacity onPress={handleDeletePress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text className="text-xs text-red-500">🗑</Text>
+            </TouchableOpacity>
+          )}
+          <Text className="text-xs text-accent font-medium">Ver detalle ›</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );

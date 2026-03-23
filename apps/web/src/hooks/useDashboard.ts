@@ -18,6 +18,9 @@ interface DashboardSummary {
     bySource: Array<{ source: string; total: number; count: number }>;
   };
   debtPayments: { total: number };
+  debtReceived: { total: number };
+  loanDisbursements: { total: number };
+  loanCollections: { total: number };
   balance: number;
   loans: {
     totalLent: number;

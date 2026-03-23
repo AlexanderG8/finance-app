@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
-import { useLoanDetail, useLoanSummary, LoanInstallment } from '@/hooks/useLoans';
+import { useLoanDetail, LoanInstallment, useDeleteLoan } from '@/hooks/useLoans';
 import { useLoanForm } from '@/hooks/useLoanForm';
 import { PayInstallmentSheet, PayInstallmentFormData } from '@/components/loans/PayInstallmentSheet';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -37,8 +37,32 @@ export default function LoanDetailScreen() {
 
   const { loan, isLoading, fetchLoan } = useLoanDetail();
   const { isSubmitting, payInstallment } = useLoanForm();
+  const { deleteLoan } = useDeleteLoan();
 
   const load = useCallback(() => fetchLoan(id), [fetchLoan, id]);
+
+  function handleDeleteLoan() {
+    if (!loan) return;
+    Alert.alert(
+      'Eliminar préstamo',
+      `¿Eliminar el préstamo de "${loan.borrowerName}"? Se eliminarán todas las cuotas y pagos. Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const ok = await deleteLoan(loan.id);
+            if (ok) {
+              router.replace('/(tabs)/loans' as never);
+            } else {
+              Alert.alert('Error', 'No se pudo eliminar el préstamo');
+            }
+          },
+        },
+      ]
+    );
+  }
 
   useEffect(() => {
     load();
@@ -100,9 +124,14 @@ export default function LoanDetailScreen() {
           <>
             {/* Header */}
             <View className="bg-primary px-5 pt-4 pb-10">
-              <TouchableOpacity onPress={() => router.back()} className="mb-3">
-                <Text className="text-white/70 text-sm">← Préstamos</Text>
-              </TouchableOpacity>
+              <View className="flex-row items-center justify-between mb-3">
+                <TouchableOpacity onPress={() => router.back()}>
+                  <Text className="text-white/70 text-sm">← Préstamos</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleDeleteLoan} className="px-3 py-1 rounded-full bg-red-500/30">
+                  <Text className="text-red-200 text-xs font-semibold">🗑 Eliminar</Text>
+                </TouchableOpacity>
+              </View>
               <View className="flex-row items-start justify-between">
                 <View className="flex-1">
                   <Text className="text-white text-xl font-bold">{loan.borrowerName}</Text>
@@ -126,9 +155,9 @@ export default function LoanDetailScreen() {
                   <Text className="text-base font-bold text-slate-800">{formatCurrency(loan.principal)}</Text>
                 </View>
                 <View className="items-center">
-                  <Text className="text-xs text-slate-400">Interés ({(loan.interestRate * 100).toFixed(0)}%)</Text>
+                  <Text className="text-xs text-slate-400">Interés/cuota ({(loan.interestRate * 100).toFixed(0)}%)</Text>
                   <Text className="text-base font-bold text-amber-500">
-                    +{formatCurrency(loan.principal * loan.interestRate)}
+                    +{formatCurrency(loan.interestAmount)}
                   </Text>
                 </View>
                 <View className="items-end">
@@ -150,6 +179,13 @@ export default function LoanDetailScreen() {
                   <Text className="text-sm font-semibold text-slate-700">{formatCurrency(loan.installmentAmount)}</Text>
                 </View>
               </View>
+              {loan.totalProfit > 0 && (
+                <View className="pt-2 mt-2 border-t border-slate-100 flex-row items-center">
+                  <Text className="text-xs text-green-600 font-semibold">
+                    Ganancia total: {formatCurrency(loan.totalProfit)}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Progreso */}

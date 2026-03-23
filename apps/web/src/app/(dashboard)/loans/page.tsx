@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { LoanSummaryCards } from '@/components/loans/LoanSummaryCards';
 import { LoanCard } from '@/components/loans/LoanCard';
 import { LoanFormModal } from '@/components/loans/LoanFormModal';
-import { useLoans, useLoanSummary } from '@/hooks/useLoans';
+import { useLoans, useLoanSummary, useDeleteLoan } from '@/hooks/useLoans';
 import type { LoanStatus } from '@finance-app/shared';
 
 const pageVariants = {
@@ -51,11 +51,17 @@ export default function LoansPage() {
 
   const { loans, pagination, isLoading, refetch } = useLoans(filters);
   const { summary, isLoading: summaryLoading, refetch: refetchSummary } = useLoanSummary();
+  const { deleteLoan } = useDeleteLoan();
 
   const handleSuccess = useCallback(() => {
     refetch();
     refetchSummary();
   }, [refetch, refetchSummary]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const ok = await deleteLoan(id);
+    if (ok) handleSuccess();
+  }, [deleteLoan, handleSuccess]);
 
   const handleSearch = useCallback((value: string) => {
     setSearchName(value);
@@ -172,7 +178,7 @@ export default function LoansPage() {
                   variants={cardVariants}
                   transition={{ duration: 0.2 }}
                 >
-                  <LoanCard loan={loan} />
+                  <LoanCard loan={loan} onDelete={() => handleDelete(loan.id)} />
                 </motion.div>
               ))}
             </AnimatePresence>

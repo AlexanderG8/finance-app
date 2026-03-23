@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
-import { useLoans, useLoanSummary, LoanStatus } from '@/hooks/useLoans';
+import { useLoans, useLoanSummary, useDeleteLoan, LoanStatus } from '@/hooks/useLoans';
 import { useLoanForm } from '@/hooks/useLoanForm';
 import { LoanCard } from '@/components/loans/LoanCard';
 import { LoanFormSheet, LoanFormData } from '@/components/loans/LoanFormSheet';
@@ -33,6 +33,7 @@ export default function LoansScreen() {
   const { loans, isLoading, fetchLoans } = useLoans();
   const { summary, isLoading: loadingSummary, fetchSummary } = useLoanSummary();
   const { isSubmitting, createLoan } = useLoanForm();
+  const { deleteLoan } = useDeleteLoan();
 
   const loadAll = useCallback(async () => {
     await Promise.all([
@@ -52,6 +53,7 @@ export default function LoansScreen() {
       borrowerName: formData.borrowerName.trim(),
       borrowerContact: formData.borrowerContact.trim() || undefined,
       principal: parseFloat(formData.principal),
+      interestRate: parseFloat(formData.interestRate),
       currency: formData.currency,
       numberOfInstallments: parseInt(formData.numberOfInstallments, 10),
       deliveryMethod: formData.deliveryMethod,
@@ -63,8 +65,14 @@ export default function LoansScreen() {
       setSheetVisible(false);
       await loadAll();
     } else {
-      Alert.alert('Error', 'No se pudo crear el préstamo');
+      Alert.alert('Error', 'No se pudo crear el préstamo. Verifica que tienes saldo suficiente.');
     }
+  }
+
+  async function handleDelete(id: string) {
+    const ok = await deleteLoan(id);
+    if (ok) await loadAll();
+    else Alert.alert('Error', 'No se pudo eliminar el préstamo');
   }
 
   return (
@@ -156,7 +164,7 @@ export default function LoansScreen() {
             </View>
           )
         }
-        renderItem={({ item }) => <LoanCard loan={item} />}
+        renderItem={({ item }) => <LoanCard loan={item} onDelete={() => handleDelete(item.id)} />}
       />
 
       <LoanFormSheet

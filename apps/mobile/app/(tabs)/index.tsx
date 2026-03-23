@@ -64,25 +64,55 @@ export default function DashboardScreen() {
               >
                 {formatCurrency(summary?.balance ?? 0)}
               </Text>
-              <View className="flex-row gap-4 mt-3">
+              {/* Fila 1: entradas */}
+              <View className="flex-row gap-3 mt-3">
                 <View className="flex-1">
                   <Text className="text-xs text-slate-400 mb-0.5">Ingresos</Text>
                   <Text className="text-sm font-semibold text-green-600">
-                    {formatCurrency(summary?.income.total ?? 0)}
+                    +{formatCurrency(summary?.income.total ?? 0)}
                   </Text>
                 </View>
+                {(summary?.debtReceived.total ?? 0) > 0 && (
+                  <View className="flex-1">
+                    <Text className="text-xs text-slate-400 mb-0.5">Deudas recibidas</Text>
+                    <Text className="text-sm font-semibold text-indigo-500">
+                      +{formatCurrency(summary?.debtReceived.total ?? 0)}
+                    </Text>
+                  </View>
+                )}
+                {(summary?.loanCollections.total ?? 0) > 0 && (
+                  <View className="flex-1">
+                    <Text className="text-xs text-slate-400 mb-0.5">Cobros</Text>
+                    <Text className="text-sm font-semibold text-accent">
+                      +{formatCurrency(summary?.loanCollections.total ?? 0)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {/* Fila 2: salidas */}
+              <View className="flex-row gap-3 mt-2 pt-2 border-t border-slate-100">
                 <View className="flex-1">
                   <Text className="text-xs text-slate-400 mb-0.5">Gastos</Text>
                   <Text className="text-sm font-semibold text-red-500">
-                    {formatCurrency(summary?.expenses.total ?? 0)}
+                    -{formatCurrency(summary?.expenses.total ?? 0)}
                   </Text>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-xs text-slate-400 mb-0.5">Deudas</Text>
-                  <Text className="text-sm font-semibold text-amber-500">
-                    {formatCurrency(summary?.debtPayments.total ?? 0)}
-                  </Text>
-                </View>
+                {(summary?.debtPayments.total ?? 0) > 0 && (
+                  <View className="flex-1">
+                    <Text className="text-xs text-slate-400 mb-0.5">Pago deudas</Text>
+                    <Text className="text-sm font-semibold text-amber-500">
+                      -{formatCurrency(summary?.debtPayments.total ?? 0)}
+                    </Text>
+                  </View>
+                )}
+                {(summary?.loanDisbursements.total ?? 0) > 0 && (
+                  <View className="flex-1">
+                    <Text className="text-xs text-slate-400 mb-0.5">Prestado</Text>
+                    <Text className="text-sm font-semibold text-slate-500">
+                      -{formatCurrency(summary?.loanDisbursements.total ?? 0)}
+                    </Text>
+                  </View>
+                )}
               </View>
             </>
           )}

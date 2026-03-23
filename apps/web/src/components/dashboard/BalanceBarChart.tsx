@@ -9,6 +9,9 @@ interface BalanceBarChartProps {
   income: number;
   expenses: number;
   debtPayments: number;
+  debtReceived: number;
+  loanDisbursements: number;
+  loanCollections: number;
   balance: number;
   month: number;
   year: number;
@@ -43,13 +46,16 @@ const CustomTooltip = ({
   return null;
 };
 
-export function BalanceBarChart({ income, expenses, debtPayments, balance, month, year, isLoading }: BalanceBarChartProps) {
+export function BalanceBarChart({ income, expenses, debtPayments, debtReceived, loanDisbursements, loanCollections, balance, month, year, isLoading }: BalanceBarChartProps) {
   const data = [
     {
       name: MONTHS[month - 1] + ' ' + year,
       Ingresos: income,
+      'Deudas recibidas': debtReceived,
+      'Cobros de cuotas': loanCollections,
       Gastos: expenses,
       'Pagos de deudas': debtPayments,
+      'Préstamos dados': loanDisbursements,
     },
   ];
 
@@ -87,9 +93,12 @@ export function BalanceBarChart({ income, expenses, debtPayments, balance, month
                   wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
                   formatter={(value) => <span style={{ color: '#64748B' }}>{value}</span>}
                 />
-                <Bar dataKey="Ingresos" fill="#28A745" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                <Bar dataKey="Gastos" fill="#E63946" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                <Bar dataKey="Pagos de deudas" fill="#F4A261" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                <Bar dataKey="Ingresos" fill="#28A745" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Deudas recibidas" fill="#6366F1" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Cobros de cuotas" fill="#2E86AB" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Gastos" fill="#E63946" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Pagos de deudas" fill="#F4A261" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Préstamos dados" fill="#94A3B8" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
 
@@ -102,6 +111,24 @@ export function BalanceBarChart({ income, expenses, debtPayments, balance, month
                 </span>
                 <span className="font-medium text-[#1E293B]">+{formatCurrency(income)}</span>
               </div>
+              {debtReceived > 0 && (
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-[#6366F1]" />
+                    Deudas recibidas
+                  </span>
+                  <span className="font-medium text-[#1E293B]">+{formatCurrency(debtReceived)}</span>
+                </div>
+              )}
+              {loanCollections > 0 && (
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-[#2E86AB]" />
+                    Cobros de cuotas
+                  </span>
+                  <span className="font-medium text-[#1E293B]">+{formatCurrency(loanCollections)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block h-2 w-2 rounded-full bg-[#E63946]" />
@@ -116,6 +143,15 @@ export function BalanceBarChart({ income, expenses, debtPayments, balance, month
                     Pagos de deudas
                   </span>
                   <span className="font-medium text-[#1E293B]">−{formatCurrency(debtPayments)}</span>
+                </div>
+              )}
+              {loanDisbursements > 0 && (
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-[#94A3B8]" />
+                    Préstamos dados
+                  </span>
+                  <span className="font-medium text-[#1E293B]">−{formatCurrency(loanDisbursements)}</span>
                 </div>
               )}
               <div className={`flex justify-between border-t border-[#E2E8F0] pt-1 font-semibold ${isPositive ? 'text-green-700' : 'text-red-600'}`}>
