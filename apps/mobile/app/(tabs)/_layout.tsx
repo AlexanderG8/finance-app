@@ -48,15 +48,21 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="loans"
+        name="incomes"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="🤝" />,
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="💰" />,
         }}
       />
       <Tabs.Screen
         name="debts"
         options={{
           tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="💳" />,
+        }}
+      />
+      <Tabs.Screen
+        name="loans"
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} label="" emoji="🤝" />,
         }}
       />
       <Tabs.Screen

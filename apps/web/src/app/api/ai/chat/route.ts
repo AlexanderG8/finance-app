@@ -21,10 +21,6 @@ function formatList(items: string[]): string {
   return items.join('\n');
 }
 
-function monthLabel(date: Date): string {
-  return `${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
-}
-
 export async function POST(req: Request): Promise<Response> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
@@ -44,118 +40,112 @@ export async function POST(req: Request): Promise<Response> {
   const body = (await req.json()) as { messages: UIMessage[] };
   const { messages } = body;
 
-  // 3. Fetch ALL financial data in parallel (no month filter)
-  const [dashboardRes, allExpensesRes, allIncomesRes, allDebtsRes, savingsRes, allLoansRes] = await Promise.all([
+  // 3. Build last 12 months list
+  const now = new Date();
+  const months: Array<{ month: number; year: number; label: string }> = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`,
+    });
+  }
+
+  // 4. Fetch all data in parallel.
+  //    For expenses and incomes, use the monthly summary endpoints (no pagination limit).
+  //    For loans/debts, limit=100 is within the schema max.
+  const baseRequests = [
     fetch(`${API_URL}/dashboard/summary`, { headers: { Authorization: authHeader } }),
-    fetch(`${API_URL}/expenses?limit=500`, { headers: { Authorization: authHeader } }),
-    fetch(`${API_URL}/incomes?limit=300`, { headers: { Authorization: authHeader } }),
+    fetch(`${API_URL}/loans?limit=100`, { headers: { Authorization: authHeader } }),
     fetch(`${API_URL}/debts?limit=100`, { headers: { Authorization: authHeader } }),
     fetch(`${API_URL}/savings`, { headers: { Authorization: authHeader } }),
-    fetch(`${API_URL}/loans?limit=100`, { headers: { Authorization: authHeader } }),
+    // Recent individual transactions for current month (within limit)
+    fetch(`${API_URL}/expenses?limit=100`, { headers: { Authorization: authHeader } }),
+    fetch(`${API_URL}/incomes?limit=100`, { headers: { Authorization: authHeader } }),
+  ];
+
+  // Monthly summary requests: expense + income per month (12 months × 2 = 24 requests)
+  const monthlySummaryRequests = months.flatMap(({ month, year }) => [
+    fetch(`${API_URL}/expenses/summary/monthly?month=${month}&year=${year}`, { headers: { Authorization: authHeader } }),
+    fetch(`${API_URL}/incomes/summary?month=${month}&year=${year}`, { headers: { Authorization: authHeader } }),
   ]);
 
-  const [dashboardJson, allExpensesJson, allIncomesJson, allDebtsJson, savingsJson, allLoansJson] = await Promise.all([
-    dashboardRes.json(),
-    allExpensesRes.json(),
-    allIncomesRes.json(),
-    allDebtsRes.json(),
-    savingsRes.json(),
-    allLoansRes.json(),
-  ]);
+  const allResponses = await Promise.all([...baseRequests, ...monthlySummaryRequests]);
+  const allJson = await Promise.all(allResponses.map((r) => r.json()));
 
-  // 4. Types
-  type ExpenseRow = { date: string; description: string; category?: { name: string }; amount: number };
-  type IncomeRow = { date: string; description: string; source: string; amount: number };
+  const [dashboardJson, allLoansJson, allDebtsJson, savingsJson, recentExpensesJson, recentIncomesJson] = allJson;
+  const monthlyJsonResults = allJson.slice(6); // remaining are monthly summaries
+
+  // 5. Types
+  type CategorySummary = { category: { name: string }; total: number; count: number };
+  type SourceSummary = { source: string; total: number };
   type LoanRow = { borrowerName: string; principal: number; totalAmount: number; installmentAmount: number; numberOfInstallments: number; status: string; loanDate: string; notes?: string };
   type DebtRow = { creditorName: string; totalAmount: number; paidAmount: number; status: string; dueDate?: string; debtType: string };
   type SavingRow = { name: string; targetAmount: number; currentAmount: number; status: string; targetDate?: string };
+  type ExpenseRow = { date: string; description: string; category?: { name: string }; amount: number };
+  type IncomeRow = { date: string; description: string; source: string; amount: number };
 
-  const allExpenses = (allExpensesJson.data as ExpenseRow[]) ?? [];
-  const allIncomes = (allIncomesJson.data as IncomeRow[]) ?? [];
-  const allLoans = (allLoansJson.data as LoanRow[]) ?? [];
-  const allDebts = (allDebtsJson.data as DebtRow[]) ?? [];
-  const savingsArray: SavingRow[] = Array.isArray(savingsJson.data) ? savingsJson.data : (savingsJson.data ? [savingsJson.data] : []);
+  // 6. Build monthly summaries from the per-month responses
+  const expensesMonthlySummary: string[] = [];
+  const incomesMonthlySummary: string[] = [];
 
-  // 5. Group expenses by month
-  const expensesByMonth = new Map<string, { total: number; byCategory: Map<string, number> }>();
-  const now = new Date();
-  const recentCutoff = new Date(now.getFullYear(), now.getMonth() - 1, 1); // last 2 months detail
-  const recentExpenses: string[] = [];
+  months.forEach(({ label }, i) => {
+    const expJson = monthlyJsonResults[i * 2];
+    const incJson = monthlyJsonResults[i * 2 + 1];
 
-  allExpenses.forEach((e) => {
-    const d = new Date(e.date);
-    const key = monthLabel(d);
-    if (!expensesByMonth.has(key)) {
-      expensesByMonth.set(key, { total: 0, byCategory: new Map() });
+    const byCategory: CategorySummary[] = expJson?.data?.byCategory ?? [];
+    const bySource: SourceSummary[] = incJson?.data?.bySource ?? [];
+    const incTotal = Number(incJson?.data?.totalAmount ?? 0);
+    const expTotal = byCategory.reduce((s, c) => s + Number(c.total), 0);
+
+    if (byCategory.length > 0) {
+      const cats = byCategory
+        .sort((a, b) => Number(b.total) - Number(a.total))
+        .map((c) => `    • ${c.category.name}: S/ ${Number(c.total).toFixed(2)} (${c.count} gastos)`)
+        .join('\n');
+      expensesMonthlySummary.push(`${label} | Total: S/ ${expTotal.toFixed(2)}\n${cats}`);
     }
-    const entry = expensesByMonth.get(key)!;
-    const amount = Number(e.amount);
-    entry.total += amount;
-    const cat = e.category?.name ?? 'Sin categoría';
-    entry.byCategory.set(cat, (entry.byCategory.get(cat) ?? 0) + amount);
 
-    if (d >= recentCutoff) {
-      recentExpenses.push(`  ${d.toLocaleDateString('es-PE')} | ${e.description} | ${cat} | S/ ${amount.toFixed(2)}`);
+    if (bySource.length > 0) {
+      const sources = bySource
+        .sort((a, b) => Number(b.total) - Number(a.total))
+        .map((s) => `    • ${s.source}: S/ ${Number(s.total).toFixed(2)}`)
+        .join('\n');
+      incomesMonthlySummary.push(`${label} | Total: S/ ${incTotal.toFixed(2)}\n${sources}`);
     }
   });
 
-  // 6. Group incomes by month
-  const incomesByMonth = new Map<string, { total: number; bySource: Map<string, number> }>();
-  const recentIncomes: string[] = [];
+  // 7. Recent individual transactions (current month)
+  const recentExpenses = (recentExpensesJson?.data as ExpenseRow[]) ?? [];
+  const recentIncomes = (recentIncomesJson?.data as IncomeRow[]) ?? [];
 
-  allIncomes.forEach((i) => {
-    const d = new Date(i.date);
-    const key = monthLabel(d);
-    if (!incomesByMonth.has(key)) {
-      incomesByMonth.set(key, { total: 0, bySource: new Map() });
-    }
-    const entry = incomesByMonth.get(key)!;
-    const amount = Number(i.amount);
-    entry.total += amount;
-    entry.bySource.set(i.source, (entry.bySource.get(i.source) ?? 0) + amount);
+  const recentExpenseLines = recentExpenses.map(
+    (e) => `  ${new Date(e.date).toLocaleDateString('es-PE')} | ${e.description} | ${e.category?.name ?? 'Sin cat.'} | S/ ${Number(e.amount).toFixed(2)}`,
+  );
+  const recentIncomeLines = recentIncomes.map(
+    (i) => `  ${new Date(i.date).toLocaleDateString('es-PE')} | ${i.description} | ${i.source} | S/ ${Number(i.amount).toFixed(2)}`,
+  );
 
-    if (d >= recentCutoff) {
-      recentIncomes.push(`  ${d.toLocaleDateString('es-PE')} | ${i.description} | ${i.source} | S/ ${amount.toFixed(2)}`);
-    }
-  });
+  // 8. Loans, debts, savings
+  const allLoans = (allLoansJson?.data as LoanRow[]) ?? [];
+  const allDebts = (allDebtsJson?.data as DebtRow[]) ?? [];
+  const savingsArray: SavingRow[] = Array.isArray(savingsJson?.data) ? savingsJson.data : (savingsJson?.data ? [savingsJson.data] : []);
 
-  // 7. Format monthly expense summary
-  const expensesMonthlySummary = Array.from(expensesByMonth.entries())
-    .map(([month, data]) => {
-      const cats = Array.from(data.byCategory.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([cat, total]) => `    • ${cat}: S/ ${total.toFixed(2)}`)
-        .join('\n');
-      return `${month} | Total: S/ ${data.total.toFixed(2)}\n${cats}`;
-    })
-    .join('\n\n');
-
-  // 8. Format monthly income summary
-  const incomesMonthlySummary = Array.from(incomesByMonth.entries())
-    .map(([month, data]) => {
-      const sources = Array.from(data.bySource.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([src, total]) => `    • ${src}: S/ ${total.toFixed(2)}`)
-        .join('\n');
-      return `${month} | Total: S/ ${data.total.toFixed(2)}\n${sources}`;
-    })
-    .join('\n\n');
-
-  // 9. Format loans
   const loansList = formatList(
-    allLoans.map((l) =>
-      `${l.borrowerName} | Prestado: S/ ${Number(l.principal).toFixed(2)} | Total a cobrar: S/ ${Number(l.totalAmount).toFixed(2)} | Cuota: S/ ${Number(l.installmentAmount).toFixed(2)} x ${l.numberOfInstallments} | Estado: ${l.status} | Fecha: ${new Date(l.loanDate).toLocaleDateString('es-PE')}${l.notes ? ` | Nota: ${l.notes}` : ''}`,
+    allLoans.map(
+      (l) =>
+        `${l.borrowerName} | Prestado: S/ ${Number(l.principal).toFixed(2)} | Total a cobrar: S/ ${Number(l.totalAmount).toFixed(2)} | Cuota: S/ ${Number(l.installmentAmount).toFixed(2)} x ${l.numberOfInstallments} | Estado: ${l.status} | Fecha: ${new Date(l.loanDate).toLocaleDateString('es-PE')}${l.notes ? ` | Nota: ${l.notes}` : ''}`,
     ),
   );
 
-  // 10. Format debts
   const debtsList = formatList(
-    allDebts.map((db) =>
-      `${db.creditorName} | Tipo: ${db.debtType} | Total: S/ ${Number(db.totalAmount).toFixed(2)} | Pagado: S/ ${Number(db.paidAmount).toFixed(2)} | Pendiente: S/ ${(Number(db.totalAmount) - Number(db.paidAmount)).toFixed(2)} | Estado: ${db.status}${db.dueDate ? ` | Vence: ${new Date(db.dueDate).toLocaleDateString('es-PE')}` : ''}`,
-    ),
+    allDebts.map((db) => {
+      const pending = Number(db.totalAmount) - Number(db.paidAmount);
+      return `${db.creditorName} | Tipo: ${db.debtType} | Total: S/ ${Number(db.totalAmount).toFixed(2)} | Pagado: S/ ${Number(db.paidAmount).toFixed(2)} | Pendiente: S/ ${pending.toFixed(2)} | Estado: ${db.status}${db.dueDate ? ` | Vence: ${new Date(db.dueDate).toLocaleDateString('es-PE')}` : ''}`;
+    }),
   );
 
-  // 11. Format savings
   const savingsList = formatList(
     savingsArray.map((g) => {
       const target = Number(g.targetAmount);
@@ -165,8 +155,8 @@ export async function POST(req: Request): Promise<Response> {
     }),
   );
 
-  // 12. Dashboard global totals
-  const d = dashboardJson.data as {
+  // 9. Dashboard global totals
+  const d = dashboardJson?.data as {
     income: { total: number };
     expenses: { total: number };
     debtPayments: { total: number };
@@ -178,7 +168,7 @@ export async function POST(req: Request): Promise<Response> {
     loans: { totalPending: number; activeLoans: number; completedLoans: number; overdueLoans: number };
   } | undefined;
 
-  // 13. Build system prompt
+  // 10. Build system prompt
   const systemPrompt = `Eres un asesor financiero personal de ${user.name}.
 Solo tienes acceso a los datos financieros de este usuario específico.
 Hoy es ${now.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
@@ -190,28 +180,28 @@ INSTRUCCIÓN DE FORMATO: Usa texto plano sin markdown. No uses asteriscos, almoh
 INSTRUCCIÓN DE EXTENSIÓN: Adapta la extensión de tu respuesta a la complejidad de la pregunta. Para preguntas simples sé breve. Para análisis financieros sé detallado.
 
 ━━━ RESUMEN GLOBAL HISTÓRICO (acumulado total) ━━━
-Ingresos totales: S/ ${d?.income?.total?.toFixed(2) ?? '0.00'}
-Gastos totales: S/ ${d?.expenses?.total?.toFixed(2) ?? '0.00'}
-Pagos a deudas totales: S/ ${d?.debtPayments?.total?.toFixed(2) ?? '0.00'}
-Préstamos desembolsados totales: S/ ${d?.loanDisbursements?.total?.toFixed(2) ?? '0.00'}
-Cobros de préstamos totales: S/ ${d?.loanCollections?.total?.toFixed(2) ?? '0.00'}
-Balance general: S/ ${d?.balance?.toFixed(2) ?? '0.00'}
-Deudas pendientes: S/ ${d?.debts?.totalPending?.toFixed(2) ?? '0.00'}
-Ahorros acumulados: S/ ${d?.savings?.totalSaved?.toFixed(2) ?? '0.00'} en ${d?.savings?.goalsCount ?? 0} meta(s)
+Ingresos totales: S/ ${Number(d?.income?.total ?? 0).toFixed(2)}
+Gastos totales: S/ ${Number(d?.expenses?.total ?? 0).toFixed(2)}
+Pagos a deudas totales: S/ ${Number(d?.debtPayments?.total ?? 0).toFixed(2)}
+Préstamos desembolsados totales: S/ ${Number(d?.loanDisbursements?.total ?? 0).toFixed(2)}
+Cobros de préstamos totales: S/ ${Number(d?.loanCollections?.total ?? 0).toFixed(2)}
+Balance general: S/ ${Number(d?.balance ?? 0).toFixed(2)}
+Deudas pendientes: S/ ${Number(d?.debts?.totalPending ?? 0).toFixed(2)}
+Ahorros acumulados: S/ ${Number(d?.savings?.totalSaved ?? 0).toFixed(2)} en ${d?.savings?.goalsCount ?? 0} meta(s)
 Préstamos activos: ${d?.loans?.activeLoans ?? 0} | Completados: ${d?.loans?.completedLoans ?? 0} | Vencidos: ${d?.loans?.overdueLoans ?? 0}
 
-━━━ GASTOS POR MES (desglose por categoría) ━━━
-${expensesMonthlySummary || 'Sin gastos registrados'}
+━━━ GASTOS POR MES — ÚLTIMOS 12 MESES (desglose por categoría) ━━━
+${expensesMonthlySummary.length > 0 ? expensesMonthlySummary.join('\n\n') : 'Sin gastos registrados'}
 
-━━━ INGRESOS POR MES (desglose por fuente) ━━━
-${incomesMonthlySummary || 'Sin ingresos registrados'}
+━━━ INGRESOS POR MES — ÚLTIMOS 12 MESES (desglose por fuente) ━━━
+${incomesMonthlySummary.length > 0 ? incomesMonthlySummary.join('\n\n') : 'Sin ingresos registrados'}
 
-━━━ DETALLE DE TRANSACCIONES RECIENTES (últimos 2 meses) ━━━
+━━━ DETALLE DE TRANSACCIONES RECIENTES ━━━
 Gastos recientes:
-${recentExpenses.length > 0 ? recentExpenses.join('\n') : '  Ninguno'}
+${recentExpenseLines.length > 0 ? recentExpenseLines.join('\n') : '  Ninguno'}
 
 Ingresos recientes:
-${recentIncomes.length > 0 ? recentIncomes.join('\n') : '  Ninguno'}
+${recentIncomeLines.length > 0 ? recentIncomeLines.join('\n') : '  Ninguno'}
 
 ━━━ TODOS LOS PRÉSTAMOS ━━━
 ${loansList}
@@ -223,19 +213,19 @@ ${debtsList}
 ${savingsList}
 
 REGLAS:
-- Usa monetos en soles (S/) para valores en PEN.
-- Si el usuario pregunta por datos que no están en el contexto, dilo honestamente.
+- Usa montos en soles (S/) para valores en PEN.
+- Si el usuario pregunta datos que no están en el contexto, dilo honestamente.
 - No inventes cifras ni datos que no estén en el contexto.
 - Puedes calcular totales, promedios y comparativas a partir de los datos disponibles.`;
 
-  // 14. Get last user message for saving history
+  // 11. Get last user message for saving history
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
   const lastUserText = lastUserMsg ? getTextFromParts(lastUserMsg.parts) : '';
 
-  // 15. Convert UIMessages to ModelMessages for Gemini
+  // 12. Convert UIMessages to ModelMessages for Gemini
   const modelMessages = await convertToModelMessages(messages);
 
-  // 16. Stream response
+  // 13. Stream response
   const result = streamText({
     model: google('gemini-3.1-flash-lite-preview'),
     system: systemPrompt,
@@ -246,9 +236,7 @@ REGLAS:
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: authHeader },
           body: JSON.stringify({ userMessage: lastUserText, assistantMessage: text }),
-        }).catch(() => {
-          // Don't fail if saving chat history fails
-        });
+        }).catch(() => {});
       }
     },
   });

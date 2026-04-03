@@ -58,7 +58,7 @@ export function ExpensesPieChart({ categories }: ExpensesPieChartProps) {
       })}
 
       <View className="mt-2 pt-3 border-t border-slate-100 flex-row justify-between">
-        <Text className="text-xs text-slate-500">Total del mes</Text>
+        <Text className="text-xs text-slate-500">Total</Text>
         <Text className="text-xs font-bold text-slate-800">{formatCurrency(total)}</Text>
       </View>
     </View>
