@@ -29,6 +29,10 @@ const loanSchema = z.object({
   borrowerName: z.string().min(1, 'El nombre es requerido'),
   borrowerContact: z.string().optional(),
   principal: z.coerce.number().positive('El monto debe ser mayor a 0'),
+  interestRate: z.coerce
+    .number()
+    .positive('La tasa debe ser mayor a 0')
+    .max(100, 'La tasa no puede exceder 100%'),
   currency: z.enum(['PEN', 'USD']),
   numberOfInstallments: z.coerce.number().int().min(1, 'Mínimo 1 cuota').max(60, 'Máximo 60 cuotas'),
   deliveryMethod: z.enum(['YAPE', 'PLIN', 'BANK_TRANSFER', 'CASH']),
@@ -44,13 +48,15 @@ interface LoanFormModalProps {
   onSuccess: () => void;
 }
 
-function calculatePreview(principal: number, numberOfInstallments: number) {
-  if (!principal || !numberOfInstallments || principal <= 0 || numberOfInstallments <= 0) return null;
-  const interestRate = principal < 1000 ? 0.15 : 0.20;
-  const interestAmount = principal * interestRate;
-  const totalAmount = principal + interestAmount;
-  const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
-  return { interestRate, interestAmount, totalAmount, installmentAmount };
+function calculatePreview(principal: number, interestRate: number, numberOfInstallments: number) {
+  if (!principal || !interestRate || !numberOfInstallments || principal <= 0 || interestRate <= 0 || numberOfInstallments <= 0) return null;
+  const rate = interestRate / 100;
+  const interestAmount = Math.round(principal * rate * 100) / 100;
+  const principalPerInstallment = Math.round((principal / numberOfInstallments) * 100) / 100;
+  const installmentAmount = Math.round((principalPerInstallment + interestAmount) * 100) / 100;
+  const totalAmount = Math.round(installmentAmount * numberOfInstallments * 100) / 100;
+  const totalProfit = Math.round(interestAmount * numberOfInstallments * 100) / 100;
+  return { interestAmount, installmentAmount, totalAmount, totalProfit };
 }
 
 export function LoanFormModal({ open, onClose, onSuccess }: LoanFormModalProps) {
@@ -71,17 +77,19 @@ export function LoanFormModal({ open, onClose, onSuccess }: LoanFormModalProps) 
       currency: 'PEN',
       loanDate: today,
       numberOfInstallments: 1,
+      interestRate: 15,
     },
   });
 
   const principal = watch('principal');
+  const interestRate = watch('interestRate');
   const numberOfInstallments = watch('numberOfInstallments');
   const currency = watch('currency');
-  const preview = calculatePreview(Number(principal), Number(numberOfInstallments));
+  const preview = calculatePreview(Number(principal), Number(interestRate), Number(numberOfInstallments));
 
   useEffect(() => {
     if (!open) {
-      reset({ currency: 'PEN', loanDate: today, numberOfInstallments: 1 });
+      reset({ currency: 'PEN', loanDate: today, numberOfInstallments: 1, interestRate: 15 });
     }
   }, [open, reset, today]);
 
@@ -140,6 +148,22 @@ export function LoanFormModal({ open, onClose, onSuccess }: LoanFormModalProps) 
               />
               {errors.principal && (
                 <p className="text-xs text-red-600">{errors.principal.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="interestRate">Tasa de interés (%) *</Label>
+              <Input
+                id="interestRate"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="100"
+                placeholder="15"
+                {...register('interestRate')}
+              />
+              {errors.interestRate && (
+                <p className="text-xs text-red-600">{errors.interestRate.message}</p>
               )}
             </div>
 
@@ -224,15 +248,15 @@ export function LoanFormModal({ open, onClose, onSuccess }: LoanFormModalProps) 
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-slate-500 text-xs">Tasa de interés</p>
+                    <p className="text-slate-500 text-xs">Interés por cuota</p>
                     <p className="font-semibold text-[#1E293B]">
-                      {(preview.interestRate * 100).toFixed(0)}%
+                      {formatCurrency(preview.interestAmount, currency)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500 text-xs">Monto de interés</p>
-                    <p className="font-semibold text-[#1E293B]">
-                      {formatCurrency(preview.interestAmount, currency)}
+                    <p className="text-slate-500 text-xs">Monto por cuota</p>
+                    <p className="font-bold text-[#2E86AB]">
+                      {formatCurrency(preview.installmentAmount, currency)}
                     </p>
                   </div>
                   <div>
@@ -242,9 +266,9 @@ export function LoanFormModal({ open, onClose, onSuccess }: LoanFormModalProps) 
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500 text-xs">Monto por cuota</p>
-                    <p className="font-bold text-[#2E86AB]">
-                      {formatCurrency(preview.installmentAmount, currency)}
+                    <p className="text-slate-500 text-xs">Ganancia total</p>
+                    <p className="font-bold text-green-600">
+                      {formatCurrency(preview.totalProfit, currency)}
                     </p>
                   </div>
                 </div>

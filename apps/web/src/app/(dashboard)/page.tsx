@@ -68,17 +68,17 @@ export default function DashboardPage() {
   const statCards: StatCard[] = data
     ? [
         {
-          title: 'Ingresos del mes',
+          title: 'Ingresos totales',
           value: formatCurrency(data.income.total),
-          subtitle: `${data.currentMonth.month}/${data.currentMonth.year}`,
+          subtitle: 'Histórico acumulado',
           icon: TrendingUp,
           iconColor: 'text-[#28A745]',
           iconBg: 'bg-green-50',
         },
         {
-          title: 'Gastos del mes',
+          title: 'Gastos totales',
           value: formatCurrency(data.expenses.total),
-          subtitle: `${data.currentMonth.month}/${data.currentMonth.year}`,
+          subtitle: 'Histórico acumulado',
           icon: TrendingDown,
           iconColor: 'text-[#E63946]',
           iconBg: 'bg-red-50',
@@ -164,20 +164,30 @@ export default function DashboardPage() {
               })}
         </motion.div>
 
-        {/* ── Section 2: Balance + PieChart + Upcoming Payments ── */}
+        {/* ── Section 2: Loan Status Bar ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <LoanStatusBar loans={data?.loans ?? { totalLent: 0, totalCollected: 0, totalPending: 0, activeLoans: 0, completedLoans: 0, overdueLoans: 0 }} isLoading={isLoading} />
+        </motion.div>
+
+        {/* ── Section 3: Balance + PieChart ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
           className="grid grid-cols-1 gap-6 lg:grid-cols-2"
         >
           <BalanceBarChart
             income={data?.income.total ?? 0}
             expenses={data?.expenses.total ?? 0}
             debtPayments={data?.debtPayments.total ?? 0}
+            debtReceived={data?.debtReceived.total ?? 0}
+            loanDisbursements={data?.loanDisbursements.total ?? 0}
+            loanCollections={data?.loanCollections.total ?? 0}
             balance={data?.balance ?? 0}
-            month={data?.currentMonth.month ?? new Date().getMonth() + 1}
-            year={data?.currentMonth.year ?? new Date().getFullYear()}
             isLoading={isLoading}
           />
 
@@ -188,10 +198,11 @@ export default function DashboardPage() {
           />
         </motion.div>
 
+        {/* ── Section 4: Upcoming Payments ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ duration: 0.4, delay: 0.35 }}
         >
           <UpcomingPayments
             loanInstallments={upcomingData?.loanInstallments ?? []}
@@ -200,27 +211,13 @@ export default function DashboardPage() {
           />
         </motion.div>
 
-        {/* ── Section 3: Loan Status Bar ── */}
-        {(isLoading || (data && data.loans.totalLent > 0)) && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.35 }}
-          >
-            <LoanStatusBar loans={data?.loans ?? { totalLent: 0, totalCollected: 0, totalPending: 0, activeLoans: 0, completedLoans: 0, overdueLoans: 0 }} isLoading={isLoading} />
-          </motion.div>
-        )}
-
-        {/* ── Section 4: AI Monthly Summary ── */}
+        {/* ── Section 5: AI Monthly Summary ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <AIMonthlySummary
-            month={data?.currentMonth.month ?? new Date().getMonth() + 1}
-            year={data?.currentMonth.year ?? new Date().getFullYear()}
-          />
+          <AIMonthlySummary />
         </motion.div>
 
         {/* ── Empty State ── */}

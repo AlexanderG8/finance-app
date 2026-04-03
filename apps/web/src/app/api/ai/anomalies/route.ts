@@ -91,17 +91,17 @@ export async function POST(req: Request): Promise<Response> {
   const result = await generateObject({
     model: google('gemini-3.1-flash-lite-preview'),
     schema: anomaliesSchema,
-    prompt: `You are a personal finance advisor. Detect unusual spending patterns by comparing the current month to the previous 2-month average.
+    prompt: `Eres un asesor financiero personal. Detecta patrones de gasto inusuales comparando el mes actual con el promedio de los 2 meses anteriores.
 
-SPENDING COMPARISON (current month vs previous 2-month average):
+COMPARACIÓN DE GASTOS (mes actual vs promedio de los últimos 2 meses):
 ${comparisonData}
 
-Rules:
-- Only flag a category as an anomaly if the current amount is at least 25% higher than the previous average AND the previous average is greater than 0 (there is historical data to compare against).
-- If a category has no previous data (avg = 0), do not flag it as an anomaly.
-- percentageIncrease should be the actual percentage increase (e.g. 45.5 for 45.5%)
-- alertMessage should be a short, friendly warning message (plain text, no markdown)
-- Return an empty anomalies array if nothing unusual is detected.`,
+Reglas:
+- Solo marca una categoría como anomalía si el monto actual es al menos un 25% mayor que el promedio anterior Y el promedio anterior es mayor que 0 (existe historial para comparar).
+- Si una categoría no tiene historial previo (promedio = 0), no la marques como anomalía.
+- percentageIncrease debe ser el porcentaje real de incremento (ej: 45.5 para 45.5%)
+- alertMessage debe ser un mensaje de advertencia corto y amigable en español (texto plano, sin markdown)
+- Devuelve un array de anomalías vacío si no se detecta nada inusual.`,
   });
 
   return new Response(JSON.stringify(result.object), {

@@ -7,6 +7,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   updateProfileSchema,
+  pushTokenSchema,
 } from '../schemas/auth.schema';
 
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -115,6 +116,20 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     res.status(200).json({
       success: true,
       data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function registerPushToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const validated = pushTokenSchema.parse(req.body);
+    await authService.registerPushToken(req.user.id, validated);
+
+    res.status(200).json({
+      success: true,
+      message: 'Token de notificaciones registrado.',
     });
   } catch (error) {
     next(error);

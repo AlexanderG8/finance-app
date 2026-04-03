@@ -80,72 +80,88 @@ export function UpcomingPayments({ loanInstallments, debts, isLoading }: Upcomin
             <p className="text-xs text-slate-400 mt-1">Estás al día con tus pagos.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {loanInstallments.map((installment) => {
-              const { label, variant } = getDaysLabel(installment.dueDate);
-              const remaining = Number(installment.amount) - Number(installment.paidAmount);
-              return (
-                <div
-                  key={installment.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100">
-                      <Users className="h-4 w-4 text-[#2E86AB]" />
+          <div className="space-y-4">
+            {/* Cuotas de préstamos */}
+            {loanInstallments.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Cuotas de préstamos
+                </p>
+                {loanInstallments.map((installment) => {
+                  const { label, variant } = getDaysLabel(installment.dueDate);
+                  const remaining = Number(installment.amount) - Number(installment.paidAmount);
+                  return (
+                    <div
+                      key={installment.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100">
+                          <Users className="h-4 w-4 text-[#2E86AB]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#1E293B] leading-tight">
+                            {installment.loan.borrowerName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Cuota #{installment.number} · {formatDate(installment.dueDate)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-3">
+                        <p className="text-sm font-semibold text-[#2E86AB]">
+                          {formatCurrency(remaining, installment.loan.currency as 'PEN' | 'USD')}
+                        </p>
+                        <Badge className={`text-[10px] px-1.5 py-0.5 border ${badgeClass(variant)}`}>
+                          {label}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-[#1E293B] leading-tight">
-                        {installment.loan.borrowerName}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Cuota #{installment.number} · {formatDate(installment.dueDate)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 ml-3">
-                    <p className="text-sm font-semibold text-[#2E86AB]">
-                      {formatCurrency(remaining, installment.loan.currency as 'PEN' | 'USD')}
-                    </p>
-                    <Badge className={`text-[10px] px-1.5 py-0.5 border ${badgeClass(variant)}`}>
-                      {label}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
 
-            {debts.map((debt) => {
-              const { label, variant } = getDaysLabel(debt.dueDate);
-              const remaining = Number(debt.totalAmount) - Number(debt.paidAmount);
-              return (
-                <div
-                  key={debt.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100">
-                      <CreditCard className="h-4 w-4 text-[#F4A261]" />
+            {/* Deudas próximas */}
+            {debts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Deudas próximas
+                </p>
+                {debts.map((debt) => {
+                  const { label, variant } = getDaysLabel(debt.dueDate);
+                  const remaining = Number(debt.totalAmount) - Number(debt.paidAmount);
+                  return (
+                    <div
+                      key={debt.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100">
+                          <CreditCard className="h-4 w-4 text-[#F4A261]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#1E293B] leading-tight">
+                            {debt.creditorName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Deuda pendiente · {formatDate(debt.dueDate)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-3">
+                        <p className="text-sm font-semibold text-[#F4A261]">
+                          {formatCurrency(remaining, debt.currency as 'PEN' | 'USD')}
+                        </p>
+                        <Badge className={`text-[10px] px-1.5 py-0.5 border ${badgeClass(variant)}`}>
+                          {label}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-[#1E293B] leading-tight">
-                        {debt.creditorName}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Deuda · {formatDate(debt.dueDate)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 ml-3">
-                    <p className="text-sm font-semibold text-[#F4A261]">
-                      {formatCurrency(remaining, debt.currency as 'PEN' | 'USD')}
-                    </p>
-                    <Badge className={`text-[10px] px-1.5 py-0.5 border ${badgeClass(variant)}`}>
-                      {label}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
 
             {loanInstallments.length + debts.length > 4 && (
               <div className="flex items-center gap-1.5 pt-1">

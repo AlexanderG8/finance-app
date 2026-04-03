@@ -5,7 +5,7 @@
 > Este archivo es la única fuente de verdad del proyecto. Ante cualquier duda, consulta aquí primero.
 
 > **Estado actual:** Fase 1 (Web) — ✅ COMPLETADA (Sprints 1–11). Pendiente: Sprint 12 (Deploy).
-> **Fase 2 (Mobile)** — Planificada. Ver documentación completa en `docs/MobileApp.md`.
+> **Fase 2 (Mobile)** — Sprints M1–M9 ✅ COMPLETADOS. Sprint M10 📋 Parcial (M10.1–M10.6 ✅). Ver documentación completa en `docs/MobileApp.md`.
 
 ---
 
@@ -39,7 +39,7 @@
 | 4 | **Deudas** | Deudas personales con historial de pagos |
 | 5 | **Ahorros** | Metas de ahorro con progreso y proyección |
 | 6 | **Ingresos** | Registro de ingresos por fuente con resumen mensual |
-| 7 | **Dashboard** | Resumen financiero con balance real (ingresos − gastos − pagos de deudas) |
+| 7 | **Dashboard** | Resumen financiero global (histórico acumulado): ingresos − gastos − pagos de deudas − préstamos + cobros |
 | 8 | **Notificaciones** | Alertas por email (Fase 1) |
 
 ---
@@ -329,6 +329,11 @@ enum DebtStatus {
   PAID
 }
 
+enum DebtType {
+  CASH
+  CREDIT
+}
+
 enum SavingGoalType {
   OBJECTIVE
   EMERGENCY
@@ -436,10 +441,12 @@ model Loan {
   borrowerContact  String?
   principal        Decimal     @db.Decimal(12, 2)  // Monto original prestado
   currency         Currency    @default(PEN)
-  interestRate     Decimal     @db.Decimal(5, 4)   // 0.1500 o 0.2000
-  totalAmount      Decimal     @db.Decimal(12, 2)  // principal + interés
+  interestRate     Decimal     @db.Decimal(5, 4)   // ej: 0.1500 (15%) — ingresado por el usuario
+  interestAmount   Decimal     @db.Decimal(12, 2)  @default(0)  // interés por cuota = principal * interestRate
+  totalAmount      Decimal     @db.Decimal(12, 2)  // installmentAmount * numberOfInstallments
   numberOfInstallments Int
-  installmentAmount Decimal    @db.Decimal(12, 2)  // totalAmount / numberOfInstallments
+  installmentAmount Decimal    @db.Decimal(12, 2)  // (principal/n) + interestAmount
+  totalProfit      Decimal     @db.Decimal(12, 2)  @default(0)  // interestAmount * numberOfInstallments
   deliveryMethod   PaymentMethod
   loanDate         DateTime
   status           LoanStatus  @default(ACTIVE)
@@ -491,6 +498,7 @@ model PersonalDebt {
   totalAmount   Decimal     @db.Decimal(12, 2)
   paidAmount    Decimal     @db.Decimal(12, 2) @default(0)
   currency      Currency    @default(PEN)
+  debtType      DebtType    @default(CASH)      // CASH suma al balance, CREDIT no
   numberOfInstallments Int?
   dueDate       DateTime?
   paymentMethod PaymentMethod
@@ -683,71 +691,61 @@ GOOGLE_GENERATIVE_AI_API_KEY="tu-api-key-de-google-ai-studio"
 ## 🔢 LÓGICA DE NEGOCIO CRÍTICA
 
 ### ⚠️ Motor de Cálculo de Préstamos (`loan-calculator.ts`)
-Este es el módulo más crítico. Implementarlo EXACTAMENTE así:
+Este es el módulo más crítico.
+
+**Fórmula de interés (el interés total se aplica a CADA cuota, no se divide):**
+- El usuario ingresa la tasa como porcentaje (ej: 15). El service convierte a decimal (÷100) antes de llamar a calculateLoan.
+- `interestAmount = principal * interestRate` (fijo por cuota)
+- `installmentAmount = (principal / n) + interestAmount`
+- `totalAmount = installmentAmount * n`
+- `totalProfit = interestAmount * n`
+
+**Ejemplo:** principal=900, tasa=15%, 3 cuotas → interestAmount=135, installmentAmount=435, totalAmount=1305, totalProfit=405
 
 ```typescript
 // apps/api/src/lib/loan-calculator.ts
 
 interface LoanCalculationInput {
-  principal: number;    // Monto original prestado
+  principal: number;
+  interestRate: number;        // decimal, ej: 0.15 (el service convierte de % a decimal)
   numberOfInstallments: number;
 }
 
 interface LoanCalculationResult {
   principal: number;
-  interestRate: number;       // 0.15 o 0.20
-  interestAmount: number;     // Monto del interés
-  totalAmount: number;        // principal + interestAmount
-  installmentAmount: number;  // totalAmount / numberOfInstallments
+  interestRate: number;
+  interestAmount: number;      // interés fijo por cuota = principal * interestRate
+  installmentAmount: number;   // (principal/n) + interestAmount
+  totalAmount: number;         // installmentAmount * n
+  totalProfit: number;         // interestAmount * n
   installments: InstallmentSchedule[];
-}
-
-interface InstallmentSchedule {
-  number: number;
-  amount: number;
-  dueDate: Date;
 }
 
 export function calculateLoan(
   input: LoanCalculationInput,
   loanDate: Date
 ): LoanCalculationResult {
-  const { principal, numberOfInstallments } = input;
+  const { principal, interestRate, numberOfInstallments } = input;
 
-  // REGLA DE NEGOCIO: Tasa según monto
-  // < 1000 soles → 15% | >= 1000 soles → 20%
-  const interestRate = principal < 1000 ? 0.15 : 0.20;
+  const interestAmount = Math.round(principal * interestRate * 100) / 100;
+  const principalPerInstallment = Math.round((principal / numberOfInstallments) * 100) / 100;
+  const installmentAmount = Math.round((principalPerInstallment + interestAmount) * 100) / 100;
+  const totalAmount = Math.round(installmentAmount * numberOfInstallments * 100) / 100;
+  const totalProfit = Math.round(interestAmount * numberOfInstallments * 100) / 100;
 
-  const interestAmount = principal * interestRate;
-  const totalAmount = principal + interestAmount;
+  const installments = Array.from({ length: numberOfInstallments }, (_, index) => {
+    const dueDate = new Date(loanDate);
+    dueDate.setMonth(dueDate.getMonth() + index + 1);
+    return { number: index + 1, amount: installmentAmount, dueDate };
+  });
 
-  // Redondear a 2 decimales para evitar errores de punto flotante
-  const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
-
-  // Generar schedule de cuotas (mensual por defecto)
-  const installments: InstallmentSchedule[] = Array.from(
-    { length: numberOfInstallments },
-    (_, index) => {
-      const dueDate = new Date(loanDate);
-      dueDate.setMonth(dueDate.getMonth() + index + 1);
-      return {
-        number: index + 1,
-        amount: installmentAmount,
-        dueDate,
-      };
-    }
-  );
-
-  return {
-    principal,
-    interestRate,
-    interestAmount,
-    totalAmount,
-    installmentAmount,
-    installments,
-  };
+  return { principal, interestRate, interestAmount, installmentAmount, totalAmount, totalProfit, installments };
 }
 ```
+
+**Validación de balance al crear préstamo:**
+Antes de crear un préstamo, el service verifica que el balance disponible sea >= principal.
+Fórmula del balance: `ingresos + deudasRecibidas − gastos − pagosDeDeudas − préstamosDesembolsados + cobrosDePrestamos` (todos del mes en curso).
 
 ### Reglas de validación de métodos de pago:
 ```
@@ -801,13 +799,24 @@ DELETE /:id                → Eliminar presupuesto
 ### Préstamos — `/api/v1/loans` [AUTH en todos]
 ```
 GET    /                   → Listar (query: status, borrowerName, page, limit)
-POST   /                   → Crear préstamo (genera cuotas automáticamente)
+POST   /                   → Crear préstamo (valida balance, genera cuotas automáticamente)
 GET    /upcoming           → Cuotas a vencer en los próximos N días (query: days=7)
 GET    /summary            → Resumen: total prestado, cobrado, pendiente
 GET    /:id                → Detalle con cuotas
 PUT    /:id                → Actualizar datos del préstamo
+DELETE /:id                → Eliminar préstamo (cascade: cuotas y pagos)
 GET    /:id/installments   → Listar cuotas del préstamo
 POST   /:id/installments/:installmentId/pay → Registrar pago de cuota
+```
+
+### Tarjetas de crédito — `/api/v1/credit-cards` [AUTH en todos]
+```
+GET    /                   → Listar tarjetas del usuario
+POST   /                   → Crear tarjeta
+GET    /:id                → Detalle de tarjeta
+GET    /:id/cycle          → Resumen del ciclo activo (totalSpent, cycleStart, cycleEnd, paymentDueDate, daysUntilPayment, expenses[])
+PUT    /:id                → Actualizar tarjeta
+DELETE /:id                → Eliminar tarjeta (Expense.creditCardId se pone en null via SetNull)
 ```
 
 ### Deudas — `/api/v1/debts` [AUTH en todos]
@@ -843,12 +852,17 @@ DELETE /:id                → Eliminar
 
 ### Dashboard — `/api/v1/dashboard` [AUTH en todos]
 ```
-GET    /summary            → Resumen general:
-                             - expenses: total + byCategory del mes
-                             - income: total + bySource del mes
-                             - debtPayments: total pagos a deudas del mes (por paidAt)
-                             - balance: income.total − expenses.total − debtPayments.total
+GET    /summary            → Resumen GLOBAL (histórico acumulado, sin filtro por mes):
+                             - expenses: { total, byCategory } acumulado histórico
+                             - income: { total, bySource } acumulado histórico
+                             - debtPayments: { total } todos los pagos a deudas (histórico)
+                             - debtReceived: { total } solo deudas CASH (suman al balance)
+                             - loanDisbursements: { total } total prestado (histórico)
+                             - loanCollections: { total } total cobrado (histórico)
+                             - balance: income + debtReceived − expenses − debtPayments
+                                        − loanDisbursements + loanCollections
                              - loans, debts, savings
+                             NOTA: debtReceived solo incluye PersonalDebt con debtType='CASH'
 GET    /upcoming-payments  → Próximos vencimientos (loans + debts, próximos 7 días)
 ```
 
@@ -1249,6 +1263,36 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 [x] 11C.4 MobileMenu accesibilidad: SheetTitle + SheetDescription con sr-only (fix warnings Radix)
 ```
 
+### Mejoras adicionales implementadas (post Sprint 11)
+```
+[x] Préstamos — nueva fórmula de interés: el interés total se aplica a CADA cuota (no dividido)
+[x] Préstamos — el usuario ingresa la tasa de interés deseada (campo interestRate en el formulario)
+[x] Préstamos — campo totalProfit: ganancia total visible en listado y detalle
+[x] Préstamos — validación de balance antes de crear (balance >= principal)
+[x] Préstamos — DELETE /loans/:id (eliminar préstamo con cascade)
+[x] Deudas — al registrar una deuda suma al balance del mes (debtReceived)
+[x] Dashboard — balance muestra desglose completo: debtReceived, loanDisbursements, loanCollections
+[x] Web — confirmación con Dialog (shadcn/ui) antes de eliminar en todas las secciones
+[x] Mobile — preview de cálculo siempre visible al tope del formulario de préstamos
+
+[x] Deudas — campo debtType (CASH | CREDIT): migración add_debt_type en Prisma
+[x] Deudas — deudas CASH suman al balance (debtReceived), deudas CREDIT no
+[x] Deudas — selector visual de tipo en formulario (web y mobile)
+[x] Deudas — badge de tipo en DebtCard y en página de detalle /debts/[id] (web y mobile)
+[x] Deudas — tipos compartidos: DebtType exportado en packages/shared y useDebts.ts (mobile)
+[x] Dashboard — métricas cambiadas de mensual a GLOBAL/histórico (web y mobile)
+[x] Dashboard — debtReceived filtra solo deudas CASH (loans.service.ts getCurrentBalance también)
+[x] Dashboard web — LoanStatusBar siempre visible (sin condición totalLent > 0), movido arriba
+[x] Dashboard web — labels actualizados: "Ingresos totales", "Gastos totales", "Balance total"
+[x] Dashboard mobile — label "Balance del mes" → "Balance total"
+[x] Mobile Gastos — filtro por año agregado (selector horizontal de últimos 5 años)
+[x] Mobile Ingresos — filtro por año agregado (selector horizontal de últimos 5 años)
+[x] Bug fix — debts.service.ts no pasaba debtType a Prisma en createDebt/updateDebt
+[x] Bug fix — DebtFormModal web: setValue('debtType') sin { shouldDirty, shouldValidate } no marcaba el campo
+[x] Bug fix — debts.tsx mobile: payload de handleSubmit no incluía debtType
+[x] Bug fix — useDebtForm.ts mobile: DebtPayload interface no tenía campo debtType
+```
+
 ### Sprint 12 — QA y Deploy Web (Pendiente)
 ```
 [ ] 12.1 Revisar y completar tests unitarios
@@ -1276,16 +1320,16 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 
 ### Sprints planificados
 ```
-[ ] Sprint M1  — Setup + Autenticación (Login, Register, Forgot Password)
-[ ] Sprint M2  — Dashboard (stats, gráficas, IA anomalías, IA resumen)
-[ ] Sprint M3  — Gastos (listado, formulario, presupuesto, IA recomendaciones)
-[ ] Sprint M4  — Ingresos (listado, formulario, resumen por fuente)
-[ ] Sprint M5  — Préstamos (listado, detalle, cuotas, pagos)
-[ ] Sprint M6  — Deudas (listado, detalle, pagos, IA estrategia)
-[ ] Sprint M7  — Ahorros (listado, detalle, contribuciones, IA asesoría)
-[ ] Sprint M8  — Asistente IA (chat con historial, preguntas sugeridas)
-[ ] Sprint M9  — Notificaciones Push (Expo Notifications + Expo Push Token)
-[ ] Sprint M10 — Configuración + QA + Deploy (EAS Build APK/IPA)
+[x] Sprint M1  — Setup + Autenticación (Login, Register, Forgot Password)
+[x] Sprint M2  — Dashboard (stats, gráficas, próximos vencimientos, pull-to-refresh)
+[x] Sprint M3  — Gastos (listado, formulario, presupuesto, IA recomendaciones)
+[x] Sprint M4  — Ingresos (listado, formulario, resumen por fuente)
+[x] Sprint M5  — Préstamos (listado, detalle, cuotas, pagos)
+[x] Sprint M6  — Deudas (listado, detalle, pagos, IA estrategia)
+[x] Sprint M7  — Ahorros (listado, detalle, contribuciones, IA asesoría)
+[x] Sprint M8  — Inteligencia Artificial completa (chat, resumen, estrategia, asesoría, anomalías)
+[x] Sprint M9  — Notificaciones Push (Expo Notifications + Expo Push Token)
+[x] Sprint M10 — Configuración + QA (M10.1–M10.6 ✅ | M10.7–M10.12 pendientes: testing + EAS Build)
 ```
 
 ### Cambio importante en el backend para Fase 2

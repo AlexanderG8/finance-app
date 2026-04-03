@@ -5,6 +5,7 @@ import {
   sendBudgetAlertEmail,
   sendSavingGoalMilestoneEmail,
 } from '../lib/mailer';
+import { sendExpoPushNotification } from '../lib/push';
 import { addDays } from 'date-fns';
 
 // ─── 1. Cuotas a 3 días de vencer → Recordatorio ─────────────────────────────
@@ -42,6 +43,17 @@ export async function checkUpcomingInstallments(): Promise<void> {
     ).catch((err: unknown) => {
       console.error(`[Notifications] Failed to send reminder for installment ${installment.id}:`, err);
     });
+
+    if (installment.loan.user.expoPushToken) {
+      await sendExpoPushNotification(
+        installment.loan.user.expoPushToken,
+        '⏰ Cuota por vencer',
+        `La cuota #${installment.number} de ${installment.loan.borrowerName} vence en ${daysUntilDue} día(s) — S/ ${Number(installment.amount).toFixed(2)}`,
+        { type: 'installment_reminder', installmentId: installment.id }
+      ).catch((err: unknown) => {
+        console.error(`[Notifications] Push failed for installment ${installment.id}:`, err);
+      });
+    }
   }
 
   console.log(`[Notifications] checkUpcomingInstallments: processed ${upcomingInstallments.length} installment(s).`);
@@ -92,6 +104,17 @@ export async function checkOverdueInstallments(): Promise<void> {
     ).catch((err: unknown) => {
       console.error(`[Notifications] Failed to send overdue email for installment ${installment.id}:`, err);
     });
+
+    if (installment.loan.user.expoPushToken) {
+      await sendExpoPushNotification(
+        installment.loan.user.expoPushToken,
+        '🚨 Cuota vencida',
+        `La cuota #${installment.number} de ${installment.loan.borrowerName} lleva ${daysOverdue} día(s) vencida — S/ ${Number(installment.amount).toFixed(2)}`,
+        { type: 'installment_overdue', installmentId: installment.id }
+      ).catch((err: unknown) => {
+        console.error(`[Notifications] Push failed for overdue installment ${installment.id}:`, err);
+      });
+    }
   }
 
   console.log(`[Notifications] checkOverdueInstallments: processed ${overdueInstallments.length} overdue installment(s).`);
@@ -144,6 +167,17 @@ export async function checkBudgetAlerts(): Promise<void> {
       ).catch((err: unknown) => {
         console.error(`[Notifications] Failed to send budget alert for budget ${budget.id}:`, err);
       });
+
+      if (budget.user.expoPushToken) {
+        await sendExpoPushNotification(
+          budget.user.expoPushToken,
+          `${budget.category.emoji} Alerta de presupuesto`,
+          `Llevas el ${percentage.toFixed(0)}% de tu presupuesto de ${budget.category.name} (S/ ${spent.toFixed(2)} / S/ ${budgetAmount.toFixed(2)})`,
+          { type: 'budget_alert', budgetId: budget.id }
+        ).catch((err: unknown) => {
+          console.error(`[Notifications] Push failed for budget alert ${budget.id}:`, err);
+        });
+      }
     }
   }
 
@@ -185,6 +219,19 @@ export async function checkSavingGoalMilestones(): Promise<void> {
             err
           );
         });
+
+        if (goal.user.expoPushToken) {
+          const emoji = milestone === 100 ? '🎉' : milestone === 75 ? '🚀' : '⭐';
+          await sendExpoPushNotification(
+            goal.user.expoPushToken,
+            `${emoji} Meta de ahorro al ${milestone}%`,
+            `Tu meta "${goal.name}" alcanzó el ${milestone}% — S/ ${currentAmount.toFixed(2)} de S/ ${targetAmount.toFixed(2)}`,
+            { type: 'saving_milestone', goalId: goal.id, milestone }
+          ).catch((err: unknown) => {
+            console.error(`[Notifications] Push failed for saving milestone ${goal.id} at ${milestone}%:`, err);
+          });
+        }
+
         // Only notify the highest milestone reached per run to avoid spam
         break;
       }

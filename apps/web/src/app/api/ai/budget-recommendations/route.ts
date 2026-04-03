@@ -37,7 +37,11 @@ export async function POST(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
-  const months = getLastThreeMonths();
+  const now = new Date();
+  const currentMonth = { month: now.getMonth() + 1, year: now.getFullYear() };
+
+  // Include current month + last 3 months so users with little history still get results
+  const months = [currentMonth, ...getLastThreeMonths()];
 
   const summaries = await Promise.all(
     months.map(({ month, year }) =>
@@ -47,14 +51,16 @@ export async function POST(req: Request): Promise<Response> {
     ),
   );
 
-  // Aggregate spending per category across 3 months
+  // Aggregate spending per category across all available months
   // json.data is { totalAmount, byCategory: [{ category: { name }, total, count }] }
   const totalsPerCategory = new Map<string, number[]>();
+  let monthsWithData = 0;
   summaries.forEach((json) => {
     const data = json.data as {
       byCategory: Array<{ category: { name: string }; total: number }>;
     } | undefined;
     const rows = data?.byCategory ?? [];
+    if (rows.length > 0) monthsWithData++;
     rows.forEach(({ category, total }) => {
       const existing = totalsPerCategory.get(category.name) ?? [];
       existing.push(Number(total));
@@ -76,18 +82,24 @@ export async function POST(req: Request): Promise<Response> {
     })
     .join('\n');
 
+  const limitedDataNote = monthsWithData < 2
+    ? 'NOTA: El usuario solo tiene datos de 1 mes. Genera sugerencias basadas en ese historial e indica que son estimaciones iniciales.'
+    : '';
+
   const result = await generateObject({
     model: google('gemini-3.1-flash-lite-preview'),
     schema: recommendationsSchema,
-    prompt: `You are a personal finance advisor. Based on spending history from the last 3 months, suggest realistic monthly budget amounts per category.
+    prompt: `Eres un asesor financiero personal. Basándote en el historial de gastos disponible, sugiere montos mensuales de presupuesto realistas por categoría. Responde SIEMPRE en español.
+${limitedDataNote}
 
-Historical spending data per category:
+Historial de gastos por categoría:
 ${spendingData}
 
-For each category, suggest a monthly budget amount with a brief reasoning.
-- suggestedAmount should be in PEN (soles), as a number
-- reasoning should be a concise explanation like "Historical average S/320, suggesting S/350 with 10% buffer"
-- Include all categories that have spending data`,
+Para cada categoría, sugiere un monto mensual de presupuesto con un razonamiento breve en español.
+- suggestedAmount debe estar en PEN (soles), como número
+- reasoning debe ser una explicación concisa en español como "Promedio histórico S/320, se sugiere S/350 con 10% de margen"
+- Si los datos son limitados (1 mes), menciónalo brevemente en el razonamiento
+- Incluye todas las categorías que tengan datos de gasto`,
   });
 
   return new Response(JSON.stringify(result.object), {

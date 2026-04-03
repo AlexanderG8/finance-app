@@ -12,6 +12,7 @@ router.get('/upcoming', loansController.getUpcomingInstallments);
 router.get('/summary', loansController.getLoanSummary);
 router.get('/:id', loansController.getLoanById);
 router.put('/:id', loansController.updateLoan);
+router.delete('/:id', loansController.deleteLoan);
 router.get('/:id/installments', loansController.getLoanInstallments);
 router.post('/:id/installments/:installmentId/pay', loansController.payInstallment);
 

@@ -3,15 +3,6 @@ import { generateText } from 'ai';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
-const LANG_LABELS: Record<string, string> = {
-  es: 'Spanish',
-  en: 'English',
-};
 
 export async function POST(req: Request): Promise<Response> {
   const authHeader = req.headers.get('Authorization');
@@ -27,79 +18,80 @@ export async function POST(req: Request): Promise<Response> {
   }
   const { data: user } = (await meRes.json()) as { data: { name: string } };
 
-  const body = (await req.json()) as { month?: number; year?: number; lang?: string };
-  const now = new Date();
-  const month = body.month ?? now.getMonth() + 1;
-  const year = body.year ?? now.getFullYear();
+  const body = (await req.json()) as { lang?: string };
   const lang = body.lang ?? 'es';
-  const langLabel = LANG_LABELS[lang] ?? 'Spanish';
 
-  const [summaryRes, incomesRes, dashboardRes] = await Promise.all([
-    fetch(`${API_URL}/expenses/summary/monthly?month=${month}&year=${year}`, {
-      headers: { Authorization: authHeader },
-    }),
-    fetch(`${API_URL}/incomes/summary/monthly?month=${month}&year=${year}`, {
-      headers: { Authorization: authHeader },
-    }),
-    fetch(`${API_URL}/dashboard/summary`, {
-      headers: { Authorization: authHeader },
-    }),
-  ]);
+  const dashboardRes = await fetch(`${API_URL}/dashboard/summary`, {
+    headers: { Authorization: authHeader },
+  });
 
-  const [summaryJson, incomesJson, dashboardJson] = await Promise.all([
-    summaryRes.json(),
-    incomesRes.json(),
-    dashboardRes.json(),
-  ]);
-
-  const monthName = MONTH_NAMES[month - 1] ?? '';
-
-  // data is { month, year, totalAmount, byCategory: [...] }
-  const expensesData = summaryJson.data as {
-    totalAmount: number;
-    byCategory: Array<{ category: { name: string }; total: number; count: number }>;
-  } | undefined;
-
-  const incomesData = incomesJson.data as {
-    totalAmount: number;
-    bySource: Array<{ source: string; total: number }>;
-  } | undefined;
+  const dashboardJson = await dashboardRes.json();
 
   const dashboardData = dashboardJson.data as {
+    expenses: { total: number; byCategory: Array<{ category: { name: string }; total: number; count: number }> };
+    income: { total: number; bySource: Array<{ source: string; total: number }> };
     debtPayments: { total: number };
+    loanDisbursements: { total: number };
+    loanCollections: { total: number };
+    balance: number;
   } | undefined;
 
-  const totalExpenses = Number(expensesData?.totalAmount ?? 0);
-  const totalIncome = Number(incomesData?.totalAmount ?? 0);
-  const totalDebtPayments = Number(dashboardData?.debtPayments?.total ?? 0);
-  // Balance = Ingresos - Gastos - Pagos de deudas
-  const balance = totalIncome - totalExpenses - totalDebtPayments;
+  const totalExpenses = Number(dashboardData?.expenses.total ?? 0);
+  const totalIncome = Number(dashboardData?.income.total ?? 0);
+  const totalDebtPayments = Number(dashboardData?.debtPayments.total ?? 0);
+  const totalLoanDisbursements = Number(dashboardData?.loanDisbursements.total ?? 0);
+  const totalLoanCollections = Number(dashboardData?.loanCollections.total ?? 0);
+  const balance = Number(dashboardData?.balance ?? 0);
 
-  const expensesByCategory = (expensesData?.byCategory ?? [])
+  const expensesByCategory = (dashboardData?.expenses.byCategory ?? [])
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8)
     .map((c) => `- ${c.category.name}: S/ ${Number(c.total).toFixed(2)} (${c.count} gastos)`)
     .join('\n');
 
-  const incomeBySource = (incomesData?.bySource ?? [])
+  const incomeBySource = (dashboardData?.income.bySource ?? [])
     .map((s) => `- ${s.source}: S/ ${Number(s.total).toFixed(2)}`)
     .join('\n');
 
-  const prompt = `You are a personal finance advisor for ${user.name}.
-Generate a concise executive summary of their financial month in 3-4 sentences.
-Respond ONLY in ${langLabel}. Do not use markdown formatting.
+  const prompt = lang === 'en'
+    ? `You are a personal finance advisor for ${user.name}.
+Generate a concise executive summary of their overall financial situation in 3-4 sentences.
+Respond ONLY in English. Do not use markdown formatting.
 
-FINANCIAL DATA FOR ${monthName} ${year}:
-Total income: S/ ${totalIncome.toFixed(2)}
-Total expenses: S/ ${totalExpenses.toFixed(2)}
-Debt payments this month: S/ ${totalDebtPayments.toFixed(2)}
-Real balance (income - expenses - debt payments): S/ ${balance.toFixed(2)}
+HISTORICAL (ALL-TIME) FINANCIAL DATA:
+Total income recorded: S/ ${totalIncome.toFixed(2)}
+Total expenses recorded: S/ ${totalExpenses.toFixed(2)}
+Total debt payments made: S/ ${totalDebtPayments.toFixed(2)}
+Total loans disbursed: S/ ${totalLoanDisbursements.toFixed(2)}
+Total loan collections received: S/ ${totalLoanCollections.toFixed(2)}
+Overall balance: S/ ${balance.toFixed(2)}
 
-Expenses by category:
+Top expenses by category (all time):
 ${expensesByCategory || 'No expenses recorded'}
 
-Income by source:
+Income by source (all time):
 ${incomeBySource || 'No income recorded'}
 
-Write a helpful, friendly, and actionable 3-4 sentence summary. Use the real balance that already discounts both expenses and debt payments. Mention the most relevant insights.`;
+Write a helpful, friendly, and actionable 3-4 sentence summary of the user's overall financial health. Highlight their biggest spending categories, income sources, and the overall balance. Mention the most relevant insights for improving their finances.`
+    : `Eres un asesor financiero personal de ${user.name}.
+Genera un resumen ejecutivo conciso de su situación financiera general en 3-4 oraciones.
+Responde ÚNICAMENTE en español. No uses formato markdown.
+
+DATOS FINANCIEROS HISTÓRICOS (ACUMULADOS):
+Total de ingresos registrados: S/ ${totalIncome.toFixed(2)}
+Total de gastos registrados: S/ ${totalExpenses.toFixed(2)}
+Total de pagos de deudas realizados: S/ ${totalDebtPayments.toFixed(2)}
+Total de préstamos desembolsados: S/ ${totalLoanDisbursements.toFixed(2)}
+Total de cobros de préstamos recibidos: S/ ${totalLoanCollections.toFixed(2)}
+Balance general: S/ ${balance.toFixed(2)}
+
+Principales gastos por categoría (histórico):
+${expensesByCategory || 'Sin gastos registrados'}
+
+Ingresos por fuente (histórico):
+${incomeBySource || 'Sin ingresos registrados'}
+
+Escribe un resumen útil, amigable y accionable de 3-4 oraciones sobre la salud financiera general del usuario. Destaca las categorías de mayor gasto, las fuentes de ingresos y el balance general. Menciona los insights más relevantes para mejorar sus finanzas.`;
 
   const result = await generateText({
     model: google('gemini-3.1-flash-lite-preview'),

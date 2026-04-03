@@ -44,9 +44,14 @@ export const updateProfileSchema = z.object({
   timezone: z.string().optional(),
 });
 
+export const pushTokenSchema = z.object({
+  token: z.string().startsWith('ExponentPushToken[', 'Token de push inválido.').nullable(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type PushTokenInput = z.infer<typeof pushTokenSchema>;

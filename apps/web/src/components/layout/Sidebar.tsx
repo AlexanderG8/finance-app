@@ -7,11 +7,13 @@ import {
   Receipt,
   Users,
   CreditCard,
+  Wallet,
   PiggyBank,
   Settings,
   LogOut,
   TrendingUp,
   Bot,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
@@ -24,8 +26,10 @@ const navigationItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, badge: null },
   { href: '/incomes', label: 'Ingresos', icon: TrendingUp, badge: null },
   { href: '/expenses', label: 'Gastos', icon: Receipt, badge: null },
+  { href: '/categories', label: 'Categorías', icon: Tag, badge: null },
+  { href: '/credit-cards', label: 'Tarjetas', icon: CreditCard, badge: null },
   { href: '/loans', label: 'Préstamos', icon: Users, badge: null },
-  { href: '/debts', label: 'Deudas', icon: CreditCard, badge: null },
+  { href: '/debts', label: 'Deudas', icon: Wallet, badge: null },
   { href: '/savings', label: 'Ahorros', icon: PiggyBank, badge: null },
   { href: '/ai-chat', label: 'Asistente IA', icon: Bot, badge: 'IA' },
   { href: '/settings', label: 'Configuración', icon: Settings, badge: null },

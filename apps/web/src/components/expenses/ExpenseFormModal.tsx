@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateExpense, useUpdateExpense } from '@/hooks/useExpenses';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import type { Expense } from '@finance-app/shared';
 
 const EXPENSE_PAYMENT_METHODS = ['CREDIT_CARD', 'YAPE', 'PLIN', 'CASH'] as const;
@@ -44,6 +45,7 @@ const expenseSchema = z.object({
   paymentMethod: z.enum(['CREDIT_CARD', 'YAPE', 'PLIN', 'CASH'], {
     required_error: 'El método de pago es requerido',
   }),
+  creditCardId: z.string().optional().nullable(),
   date: z.string().min(1, 'La fecha es requerida'),
   currency: z.enum(['PEN', 'USD']),
   isRecurring: z.boolean(),
@@ -61,6 +63,7 @@ interface ExpenseFormModalProps {
 
 export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseFormModalProps) {
   const { categories } = useCategories();
+  const { cards } = useCreditCards();
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
 
@@ -72,6 +75,7 @@ export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseF
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -80,12 +84,15 @@ export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseF
       amount: 0,
       categoryId: '',
       paymentMethod: 'CASH',
+      creditCardId: null,
       date: format(new Date(), 'yyyy-MM-dd'),
       currency: 'PEN',
       isRecurring: false,
       notes: '',
     },
   });
+
+  const paymentMethod = watch('paymentMethod');
 
   useEffect(() => {
     if (open) {
@@ -95,6 +102,7 @@ export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseF
           amount: expense.amount,
           categoryId: expense.categoryId,
           paymentMethod: expense.paymentMethod as 'CREDIT_CARD' | 'YAPE' | 'PLIN' | 'CASH',
+          creditCardId: expense.creditCardId ?? null,
           date: format(new Date(expense.date), 'yyyy-MM-dd'),
           currency: expense.currency,
           isRecurring: expense.isRecurring,
@@ -106,6 +114,7 @@ export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseF
           amount: 0,
           categoryId: '',
           paymentMethod: 'CASH',
+          creditCardId: null,
           date: format(new Date(), 'yyyy-MM-dd'),
           currency: 'PEN',
           isRecurring: false,
@@ -120,6 +129,7 @@ export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseF
       ...values,
       date: new Date(values.date).toISOString(),
       notes: values.notes || undefined,
+      creditCardId: values.paymentMethod === 'CREDIT_CARD' ? (values.creditCardId ?? null) : null,
     };
 
     let result: Expense | null = null;
@@ -249,6 +259,40 @@ export function ExpenseFormModal({ open, onClose, expense, onSuccess }: ExpenseF
               <p className="text-xs text-red-600">{errors.paymentMethod.message}</p>
             )}
           </div>
+
+          {/* Tarjeta de crédito — solo cuando paymentMethod es CREDIT_CARD */}
+          {paymentMethod === 'CREDIT_CARD' && (
+            <div className="space-y-1.5">
+              <Label>Tarjeta de crédito (opcional)</Label>
+              <Controller
+                name="creditCardId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? ''}
+                    onValueChange={(val) => field.onChange(val === 'none' ? null : val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una tarjeta..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin tarjeta específica</SelectItem>
+                      {cards.map((card) => (
+                        <SelectItem key={card.id} value={card.id}>
+                          {card.entityName} ({card.currency})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {cards.length === 0 && (
+                <p className="text-xs text-slate-400">
+                  No tienes tarjetas registradas. Agrégalas en la sección "Tarjetas de crédito".
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Fecha */}
           <div className="space-y-1.5">

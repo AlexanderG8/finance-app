@@ -51,6 +51,7 @@ type CreateLoanInput = {
   borrowerName: string;
   borrowerContact?: string;
   principal: number;
+  interestRate: number;  // porcentaje, ej: 15 para 15%
   currency: 'PEN' | 'USD';
   numberOfInstallments: number;
   deliveryMethod: 'YAPE' | 'PLIN' | 'BANK_TRANSFER' | 'CASH';
@@ -271,6 +272,28 @@ export function useUpdateLoan(): UseUpdateLoanResult {
   }, []);
 
   return { updateLoan, isLoading, error };
+}
+
+export function useDeleteLoan() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteLoan = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await apiClient.delete(`/loans/${id}`);
+      return true;
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      setError(e.response?.data?.error ?? 'Error al eliminar el préstamo.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return { deleteLoan, isLoading, error };
 }
 
 export function usePayInstallment(): UsePayInstallmentResult {

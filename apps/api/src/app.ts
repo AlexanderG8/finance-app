@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import { join } from 'path';
+// Load .env from apps/api/ regardless of the working directory (turborepo runs from root)
+loadEnv({ path: join(__dirname, '../.env') });
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -11,18 +14,17 @@ import debtsRoutes from './routes/debts.routes';
 import savingsRoutes from './routes/savings.routes';
 import incomeRoutes from './routes/income.routes';
 import chatRoutes from './routes/chat.routes';
+import aiRoutes from './routes/ai.routes';
+import creditCardsRoutes from './routes/credit-cards.routes';
+import categoriesRoutes from './routes/categories.routes';
 import { authMiddleware } from './middlewares/auth.middleware';
 import { errorMiddleware } from './middlewares/error.middleware';
 import { startNotificationJobs } from './jobs/notification.job';
 
-// Additional routes for categories and budgets
+// Additional routes for budgets
 import { Router } from 'express';
 import * as expensesController from './controllers/expenses.controller';
-const categoriesRouter = Router();
 const budgetsRouter = Router();
-
-categoriesRouter.use(authMiddleware);
-categoriesRouter.get('/', expensesController.listCategories);
 
 budgetsRouter.use(authMiddleware);
 budgetsRouter.get('/', expensesController.listBudgets);
@@ -40,28 +42,35 @@ import * as debtsService from './services/debts.service';
 import * as savingsService from './services/savings.service';
 import * as incomeService from './services/income.service';
 import { Request, Response, NextFunction } from 'express';
-import { addDays, startOfMonth, endOfMonth } from 'date-fns';
+import { addDays } from 'date-fns';
 import { prisma } from './lib/prisma';
 
 dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
-
-    const [loanSummary, monthlySummary, incomeSummary, debtsList, savingGoals, debtPaymentsAggregate] = await Promise.all([
+    const [loanSummary, expensesSummary, incomeSummary, debtsList, savingGoals, debtPaymentsAggregate, debtReceivedAggregate, loanDisbursementsAggregate, loanCollectionsAggregate] = await Promise.all([
       loansService.getLoanSummary(req.user.id),
-      expensesService.getMonthlySummary(req.user.id, month, year),
-      incomeService.getMonthlyIncomeSummary(req.user.id, month, year),
+      expensesService.getGlobalExpensesSummary(req.user.id),
+      incomeService.getGlobalIncomeSummary(req.user.id),
       debtsService.listDebts(req.user.id, { page: 1, limit: 100 }),
       savingsService.listSavingGoals(req.user.id),
+      // Total histórico de pagos a deudas
       prisma.debtPayment.aggregate({
-        where: {
-          debt: { userId: req.user.id },
-          paidAt: { gte: monthStart, lte: monthEnd },
-        },
+        where: { debt: { userId: req.user.id } },
+        _sum: { amount: true },
+      }),
+      // Total histórico de deudas en efectivo recibidas (suman al balance)
+      prisma.personalDebt.aggregate({
+        where: { userId: req.user.id, debtType: 'CASH' },
+        _sum: { totalAmount: true },
+      }),
+      // Total histórico de préstamos desembolsados (restan al balance)
+      prisma.loan.aggregate({
+        where: { userId: req.user.id },
+        _sum: { principal: true },
+      }),
+      // Total histórico de cobros de cuotas (suman al balance)
+      prisma.loanPayment.aggregate({
+        where: { installment: { loan: { userId: req.user.id } } },
         _sum: { amount: true },
       }),
     ]);
@@ -75,21 +84,34 @@ dashboardRouter.get('/summary', async (req: Request, res: Response, next: NextFu
       0
     );
     const debtPaymentsTotal = Number(debtPaymentsAggregate._sum.amount ?? 0);
+    const debtReceivedTotal = Number(debtReceivedAggregate._sum.totalAmount ?? 0);
+    const loanDisbursementsTotal = Number(loanDisbursementsAggregate._sum.principal ?? 0);
+    const loanCollectionsTotal = Number(loanCollectionsAggregate._sum.amount ?? 0);
+
+    const balance =
+      incomeSummary.totalAmount +
+      debtReceivedTotal -
+      expensesSummary.totalAmount -
+      debtPaymentsTotal -
+      loanDisbursementsTotal +
+      loanCollectionsTotal;
 
     res.status(200).json({
       success: true,
       data: {
-        currentMonth: { month, year },
         expenses: {
-          total: monthlySummary.totalAmount,
-          byCategory: monthlySummary.byCategory,
+          total: expensesSummary.totalAmount,
+          byCategory: expensesSummary.byCategory,
         },
         income: {
           total: incomeSummary.totalAmount,
           bySource: incomeSummary.bySource,
         },
         debtPayments: { total: debtPaymentsTotal },
-        balance: incomeSummary.totalAmount - monthlySummary.totalAmount - debtPaymentsTotal,
+        debtReceived: { total: debtReceivedTotal },
+        loanDisbursements: { total: loanDisbursementsTotal },
+        loanCollections: { total: loanCollectionsTotal },
+        balance,
         loans: loanSummary,
         debts: { totalPending: totalDebts },
         savings: { totalSaved: totalSavings, goalsCount: savingGoals.length },
@@ -177,13 +199,15 @@ app.use(express.json({ limit: '10kb' }));
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/expenses', expensesRoutes);
-app.use('/api/v1/categories', categoriesRouter);
+app.use('/api/v1/categories', categoriesRoutes);
 app.use('/api/v1/budgets', budgetsRouter);
 app.use('/api/v1/loans', loansRoutes);
 app.use('/api/v1/debts', debtsRoutes);
 app.use('/api/v1/savings', savingsRoutes);
 app.use('/api/v1/incomes', incomeRoutes);
 app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/credit-cards', creditCardsRoutes);
 app.use('/api/v1/dashboard', dashboardRouter);
 
 // ── Health Check ──────────────────────────────────────────────────────────────

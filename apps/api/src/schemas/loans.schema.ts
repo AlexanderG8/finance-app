@@ -15,6 +15,10 @@ export const createLoanSchema = z.object({
     .number()
     .positive('El monto principal debe ser positivo.')
     .multipleOf(0.01, 'El monto debe tener máximo 2 decimales.'),
+  interestRate: z
+    .number({ required_error: 'La tasa de interés es obligatoria.' })
+    .positive('La tasa de interés debe ser positiva.')
+    .max(100, 'La tasa de interés no puede exceder 100%.'),
   currency: z.enum(['PEN', 'USD']).default('PEN'),
   numberOfInstallments: z
     .number()
