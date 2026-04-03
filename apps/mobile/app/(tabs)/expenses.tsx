@@ -31,7 +31,9 @@ type ActiveTab = 'list' | 'summary' | 'budget';
 export default function ExpensesScreen() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-  const [selectedYear] = useState(now.getFullYear());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const currentYear = now.getFullYear();
+  const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const [activeTab, setActiveTab] = useState<ActiveTab>('list');
   const [sheetVisible, setSheetVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -159,6 +161,7 @@ export default function ExpensesScreen() {
       amount: parseFloat(formData.amount),
       currency: formData.currency,
       paymentMethod: formData.paymentMethod,
+      creditCardId: formData.paymentMethod === 'CREDIT_CARD' ? (formData.creditCardId ?? null) : null,
       date: new Date(formData.date).toISOString(),
       isRecurring: formData.isRecurring,
       notes: formData.notes.trim() || undefined,
@@ -194,6 +197,28 @@ export default function ExpensesScreen() {
           >
             <Text className="text-white text-xl leading-none">+</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Year selector */}
+        <View className="flex-row gap-2 mb-2">
+          {YEARS.map((year) => {
+            const selected = year === selectedYear;
+            return (
+              <TouchableOpacity
+                key={year}
+                onPress={() => setSelectedYear(year)}
+                className="px-3 py-1 rounded-full"
+                style={{ backgroundColor: selected ? '#fff' : 'rgba(255,255,255,0.15)' }}
+              >
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: selected ? Colors.primary : '#fff' }}
+                >
+                  {year}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Month selector */}

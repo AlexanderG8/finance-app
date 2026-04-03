@@ -20,12 +20,18 @@ const PAYMENT_METHODS = [
   { value: 'BANK_TRANSFER', label: 'Transferencia' },
 ];
 
+const DEBT_TYPES = [
+  { value: 'CASH',   label: 'Efectivo', description: 'Dinero recibido en mano — suma a tu balance' },
+  { value: 'CREDIT', label: 'Crédito',  description: 'Compra a crédito — no suma a tu balance' },
+];
+
 const CURRENCIES = ['PEN', 'USD'];
 
 export interface DebtFormData {
   creditorName: string;
   totalAmount: string;
   currency: string;
+  debtType: string;
   numberOfInstallments: string;
   dueDate: string;
   paymentMethod: string;
@@ -45,6 +51,7 @@ export function DebtFormSheet({ visible, onClose, onSubmit, debt, isSubmitting }
     creditorName: '',
     totalAmount: '',
     currency: 'PEN',
+    debtType: 'CASH',
     numberOfInstallments: '',
     dueDate: '',
     paymentMethod: 'CASH',
@@ -57,6 +64,7 @@ export function DebtFormSheet({ visible, onClose, onSubmit, debt, isSubmitting }
         creditorName: debt.creditorName,
         totalAmount: String(debt.totalAmount),
         currency: debt.currency,
+        debtType: debt.debtType,
         numberOfInstallments: debt.numberOfInstallments ? String(debt.numberOfInstallments) : '',
         dueDate: debt.dueDate ? debt.dueDate.slice(0, 10) : '',
         paymentMethod: debt.paymentMethod,
@@ -67,6 +75,7 @@ export function DebtFormSheet({ visible, onClose, onSubmit, debt, isSubmitting }
         creditorName: '',
         totalAmount: '',
         currency: 'PEN',
+        debtType: 'CASH',
         numberOfInstallments: '',
         dueDate: '',
         paymentMethod: 'CASH',
@@ -147,6 +156,32 @@ export function DebtFormSheet({ visible, onClose, onSubmit, debt, isSubmitting }
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          {/* Tipo de deuda */}
+          <Text className="text-xs text-slate-500 mb-2 font-medium">TIPO DE DEUDA</Text>
+          <View className="flex-row gap-3 mb-4">
+            {DEBT_TYPES.map((dt) => {
+              const selected = form.debtType === dt.value;
+              return (
+                <TouchableOpacity
+                  key={dt.value}
+                  onPress={() => set('debtType', dt.value)}
+                  className="flex-1 rounded-xl border-2 px-3 py-3"
+                  style={{
+                    borderColor: selected
+                      ? dt.value === 'CASH' ? '#28A745' : Colors.accent
+                      : '#e2e8f0',
+                    backgroundColor: selected
+                      ? dt.value === 'CASH' ? '#28A74510' : `${Colors.accent}10`
+                      : '#fff',
+                  }}
+                >
+                  <Text className="text-sm font-bold text-slate-800 mb-0.5">{dt.label}</Text>
+                  <Text className="text-xs text-slate-400" numberOfLines={2}>{dt.description}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* Cuotas */}

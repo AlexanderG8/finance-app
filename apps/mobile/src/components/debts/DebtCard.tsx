@@ -1,12 +1,17 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Debt, DebtStatus } from '@/hooks/useDebts';
+import { Debt, DebtStatus, DebtType } from '@/hooks/useDebts';
 
 const STATUS_CONFIG: Record<DebtStatus, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'Pendiente', color: '#F4A261', bg: '#F4A26115' },
   PARTIAL: { label: 'Parcial', color: '#2E86AB', bg: '#2E86AB15' },
   PAID: { label: 'Pagada', color: '#28A745', bg: '#28A74515' },
+};
+
+const TYPE_CONFIG: Record<DebtType, { label: string; color: string; bg: string }> = {
+  CASH:   { label: 'Efectivo', color: '#28A745', bg: '#28A74515' },
+  CREDIT: { label: 'Crédito',  color: '#2E86AB', bg: '#2E86AB15' },
 };
 
 interface DebtCardProps {
@@ -18,6 +23,7 @@ interface DebtCardProps {
 export function DebtCard({ debt, onEdit, onDelete }: DebtCardProps) {
   const router = useRouter();
   const config = STATUS_CONFIG[debt.status];
+  const typeConfig = TYPE_CONFIG[debt.debtType];
   const remaining = debt.totalAmount - debt.paidAmount;
   const pct = debt.totalAmount > 0 ? (debt.paidAmount / debt.totalAmount) * 100 : 0;
 
@@ -43,10 +49,19 @@ export function DebtCard({ debt, onEdit, onDelete }: DebtCardProps) {
             )}
           </View>
         </View>
-        <View className="px-2 py-1 rounded-full" style={{ backgroundColor: config.bg }}>
-          <Text className="text-xs font-semibold" style={{ color: config.color }}>
-            {config.label}
-          </Text>
+        <View className="flex-row gap-1.5">
+          {typeConfig && (
+            <View className="px-2 py-1 rounded-full" style={{ backgroundColor: typeConfig.bg }}>
+              <Text className="text-xs font-semibold" style={{ color: typeConfig.color }}>
+                {typeConfig.label}
+              </Text>
+            </View>
+          )}
+          <View className="px-2 py-1 rounded-full" style={{ backgroundColor: config.bg }}>
+            <Text className="text-xs font-semibold" style={{ color: config.color }}>
+              {config.label}
+            </Text>
+          </View>
         </View>
       </View>
 

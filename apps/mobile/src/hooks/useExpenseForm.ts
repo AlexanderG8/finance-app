@@ -8,6 +8,7 @@ interface ExpensePayload {
   amount: number;
   currency: string;
   paymentMethod: string;
+  creditCardId?: string | null;
   date: string;
   isRecurring: boolean;
   notes?: string;

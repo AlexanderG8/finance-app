@@ -45,7 +45,9 @@ export default function IncomesScreen() {
   const router = useRouter();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-  const [selectedYear] = useState(now.getFullYear());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const currentYear = now.getFullYear();
+  const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const [activeTab, setActiveTab] = useState<ActiveTab>('list');
   const [sheetVisible, setSheetVisible] = useState(false);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
@@ -142,6 +144,28 @@ export default function IncomesScreen() {
           >
             <Text className="text-white text-xl leading-none">+</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Year selector */}
+        <View className="flex-row gap-2 mb-2">
+          {YEARS.map((year) => {
+            const selected = year === selectedYear;
+            return (
+              <TouchableOpacity
+                key={year}
+                onPress={() => setSelectedYear(year)}
+                className="px-3 py-1 rounded-full"
+                style={{ backgroundColor: selected ? '#fff' : 'rgba(255,255,255,0.15)' }}
+              >
+                <Text
+                  className="text-xs font-semibold"
+                  style={{ color: selected ? Colors.primary : '#fff' }}
+                >
+                  {year}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Month selector */}

@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { Category } from '@/hooks/useCategories';
 import { Expense } from '@/hooks/useExpenses';
+import { CreditCard, useCreditCards } from '@/hooks/useCreditCards';
 import { Colors } from '@/constants/colors';
 import { formatCurrency } from '@/lib/utils';
 
@@ -39,6 +40,7 @@ export interface ExpenseFormData {
   amount: string;
   currency: string;
   paymentMethod: string;
+  creditCardId: string | null;
   date: string;
   isRecurring: boolean;
   notes: string;
@@ -56,16 +58,22 @@ export function ExpenseFormSheet({
   expense,
   isSubmitting,
 }: ExpenseFormSheetProps) {
+  const { cards, fetchCards } = useCreditCards();
   const [form, setForm] = useState<ExpenseFormData>({
     categoryId: '',
     description: '',
     amount: '',
     currency: 'PEN',
     paymentMethod: 'CASH',
+    creditCardId: null,
     date: todayISO(),
     isRecurring: false,
     notes: '',
   });
+
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
 
   useEffect(() => {
     if (expense) {
@@ -75,6 +83,7 @@ export function ExpenseFormSheet({
         amount: String(expense.amount),
         currency: expense.currency,
         paymentMethod: expense.paymentMethod,
+        creditCardId: (expense as { creditCardId?: string | null }).creditCardId ?? null,
         date: expense.date.slice(0, 10),
         isRecurring: expense.isRecurring,
         notes: expense.notes ?? '',
@@ -86,6 +95,7 @@ export function ExpenseFormSheet({
         amount: '',
         currency: 'PEN',
         paymentMethod: 'CASH',
+        creditCardId: null,
         date: todayISO(),
         isRecurring: false,
         notes: '',
@@ -227,6 +237,46 @@ export function ExpenseFormSheet({
               );
             })}
           </View>
+
+          {/* Tarjeta de crédito — solo cuando paymentMethod es CREDIT_CARD */}
+          {form.paymentMethod === 'CREDIT_CARD' && cards.length > 0 && (
+            <View className="mb-4">
+              <Text className="text-xs text-slate-500 mb-2 font-medium">TARJETA (OPCIONAL)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <TouchableOpacity
+                  onPress={() => set('creditCardId', null)}
+                  className="mr-2 px-3 py-2 rounded-xl border"
+                  style={{
+                    backgroundColor: form.creditCardId === null ? Colors.primary + '15' : '#fff',
+                    borderColor: form.creditCardId === null ? Colors.primary : '#e2e8f0',
+                  }}
+                >
+                  <Text className="text-xs" style={{ color: form.creditCardId === null ? Colors.primary : '#94a3b8' }}>
+                    Sin especificar
+                  </Text>
+                </TouchableOpacity>
+                {cards.map((card: CreditCard) => {
+                  const selected = form.creditCardId === card.id;
+                  return (
+                    <TouchableOpacity
+                      key={card.id}
+                      onPress={() => set('creditCardId', card.id)}
+                      className="mr-2 px-3 py-2 rounded-xl border"
+                      style={{
+                        backgroundColor: selected ? Colors.primary + '15' : '#fff',
+                        borderColor: selected ? Colors.primary : '#e2e8f0',
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: selected ? Colors.primary : '#64748b' }}>
+                        {card.entityName}
+                      </Text>
+                      <Text className="text-xs" style={{ color: '#94a3b8' }}>{card.currency}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Fecha */}
           <DatePickerField

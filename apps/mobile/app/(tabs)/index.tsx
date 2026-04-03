@@ -18,12 +18,11 @@ export default function DashboardScreen() {
   const { summary, isLoading, fetchSummary } = useDashboard();
   const { payments, isLoading: loadingPayments, fetchPayments } = useUpcomingPayments();
   const { summary: aiSummary, isGenerating: isGeneratingSummary, generate: generateSummary } = useAIMonthlySummary();
-  const { anomalies, showAlert: showAnomalyAlert, check: checkAnomalies, dismiss: dismissAnomalies } = useAIAnomalies();
+  const { anomalies, showAlert: showAnomalyAlert, showEmpty: showAnomalyEmpty, isLoading: isDetectingAnomalies, detect: detectAnomalies, dismiss: dismissAnomalies } = useAIAnomalies();
 
   const loadAll = useCallback(async () => {
     await Promise.all([fetchSummary(), fetchPayments()]);
-    checkAnomalies();
-  }, [fetchSummary, fetchPayments, checkAnomalies]);
+  }, [fetchSummary, fetchPayments]);
 
   useEffect(() => {
     loadAll();
@@ -53,7 +52,7 @@ export default function DashboardScreen() {
 
         {/* Balance Card */}
         <View className="mx-4 -mt-6 bg-white rounded-2xl p-5 border border-slate-100 mb-4">
-          <Text className="text-slate-500 text-xs mb-1">Balance del mes</Text>
+          <Text className="text-slate-500 text-xs mb-1">Balance total</Text>
           {isLoading && !summary ? (
             <ActivityIndicator color={Colors.primary} />
           ) : (
@@ -122,7 +121,7 @@ export default function DashboardScreen() {
           {/* Stat Cards */}
           <View className="flex-row flex-wrap gap-3">
             <StatCard
-              label="Por cobrar"
+              label="Prestamos por cobrar"
               value={formatCurrency(summary?.loans.totalPending ?? 0)}
               emoji="🤝"
               color={Colors.accent}
@@ -171,22 +170,13 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {/* Balance Chart */}
-          {summary && (
-            <BalanceChart
-              income={summary.income.total}
-              expenses={summary.expenses.total}
-              debtPayments={summary.debtPayments.total}
-            />
-          )}
-
           {/* Expenses Pie Chart */}
           {summary && (
             <ExpensesPieChart categories={summary.expenses.byCategory} />
           )}
 
-          {/* Anomaly Alert */}
-          {showAnomalyAlert && (
+          {/* Anomaly Detection */}
+          {showAnomalyAlert ? (
             <View className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-sm font-semibold text-amber-700">⚠️ Gastos inusuales detectados</Text>
@@ -204,13 +194,48 @@ export default function DashboardScreen() {
                 </View>
               ))}
             </View>
+          ) : showAnomalyEmpty ? (
+            <View className="bg-green-50 rounded-2xl p-4 border border-green-200 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2 flex-1">
+                <Text className="text-base">✅</Text>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-green-700">Sin anomalías detectadas</Text>
+                  <Text className="text-xs text-green-600">Tus gastos están dentro del rango habitual</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={dismissAnomalies}>
+                <Text className="text-xs text-green-500">✕</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+              <View className="px-4 py-3 flex-row items-center justify-between">
+                <View className="flex-1 mr-3">
+                  <Text className="text-sm font-semibold text-primary">🔍 Detectar anomalías</Text>
+                  <Text className="text-xs text-slate-400 mt-0.5">Compara tus gastos con los últimos 2 meses</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={detectAnomalies}
+                  disabled={isDetectingAnomalies}
+                  className="px-4 py-2 rounded-xl"
+                  style={{ backgroundColor: isDetectingAnomalies ? '#e2e8f0' : Colors.primary }}
+                >
+                  {isDetectingAnomalies ? (
+                    <View className="flex-row items-center gap-1.5">
+                      <ActivityIndicator color={Colors.primary} size="small" />
+                      <Text className="text-xs text-slate-500">Analizando...</Text>
+                    </View>
+                  ) : (
+                    <Text className="text-white text-xs font-semibold">Detectar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
-          {/* AI Monthly Summary */}
+          {/* AI Global Summary */}
           <View className="bg-white rounded-2xl p-4 border border-slate-100">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-sm font-semibold text-primary">🤖 Resumen con IA</Text>
-            </View>
+            <Text className="text-sm font-semibold text-primary mb-2">🤖 Resumen financiero</Text>
             {aiSummary ? (
               <>
                 <Text className="text-sm text-slate-600 leading-relaxed mb-3">{aiSummary}</Text>
@@ -237,7 +262,7 @@ export default function DashboardScreen() {
                     <Text className="text-slate-500 text-sm">Analizando tus finanzas...</Text>
                   </View>
                 ) : (
-                  <Text className="text-white text-sm font-semibold">Generar resumen del mes</Text>
+                  <Text className="text-white text-sm font-semibold">Generar resumen con IA</Text>
                 )}
               </TouchableOpacity>
             )}

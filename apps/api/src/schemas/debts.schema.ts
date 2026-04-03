@@ -12,6 +12,7 @@ export const createDebtSchema = z.object({
     .positive('El monto total debe ser positivo.')
     .multipleOf(0.01, 'El monto debe tener máximo 2 decimales.'),
   currency: z.enum(['PEN', 'USD']).default('PEN'),
+  debtType: z.enum(['CASH', 'CREDIT']).default('CASH'),
   numberOfInstallments: z.number().int().min(1).max(60).optional(),
   dueDate: z.string().datetime('Fecha de vencimiento inválida.').optional(),
   paymentMethod: z.enum(DEBT_PAYMENT_METHODS, {

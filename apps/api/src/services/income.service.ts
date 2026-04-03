@@ -107,6 +107,27 @@ export async function deleteIncome(userId: string, incomeId: string): Promise<vo
   await prisma.income.delete({ where: { id: incomeId } });
 }
 
+export async function getGlobalIncomeSummary(userId: string) {
+  const incomes = await prisma.income.findMany({ where: { userId } });
+
+  const totalAmount = incomes.reduce((sum, i) => sum + Number(i.amount), 0);
+
+  const bySource: Record<string, { source: string; total: number; count: number }> = {};
+  for (const income of incomes) {
+    const key = income.source;
+    if (!bySource[key]) {
+      bySource[key] = { source: key, total: 0, count: 0 };
+    }
+    bySource[key]!.total += Number(income.amount);
+    bySource[key]!.count += 1;
+  }
+
+  return {
+    totalAmount,
+    bySource: Object.values(bySource),
+  };
+}
+
 export async function getMonthlyIncomeSummary(userId: string, month: number, year: number) {
   const incomes = await prisma.income.findMany({
     where: {

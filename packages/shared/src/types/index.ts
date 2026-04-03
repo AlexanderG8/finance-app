@@ -4,6 +4,7 @@ export * from './loan.types';
 export * from './debt.types';
 export * from './savings.types';
 export * from './income.types';
+export * from './credit-card.types';
 
 // Common API response types
 export interface ApiSuccess<T> {

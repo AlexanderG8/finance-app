@@ -3,16 +3,19 @@ export type PaymentMethod = 'CREDIT_CARD' | 'YAPE' | 'PLIN' | 'BANK_TRANSFER' | 
 
 export interface ExpenseCategory {
   id: string;
+  userId: string | null;
   name: string;
   emoji: string;
   color: string;
   createdAt: string;
+  isUserCategory: boolean;
 }
 
 export interface Expense {
   id: string;
   userId: string;
   categoryId: string;
+  creditCardId: string | null;
   category: ExpenseCategory;
   description: string;
   amount: number;

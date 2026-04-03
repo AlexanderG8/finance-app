@@ -10,12 +10,7 @@ import { useAuthStore } from '@/stores/auth.store';
 
 type Lang = 'es' | 'en';
 
-interface AIMonthlySummaryProps {
-  month: number;
-  year: number;
-}
-
-export function AIMonthlySummary({ month, year }: AIMonthlySummaryProps) {
+export function AIMonthlySummary() {
   const { accessToken } = useAuthStore();
   const [lang, setLang] = useState<Lang>('es');
   const [summary, setSummary] = useState<string | null>(null);
@@ -35,14 +30,18 @@ export function AIMonthlySummary({ month, year }: AIMonthlySummaryProps) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ month, year, lang }),
+        body: JSON.stringify({ lang }),
       });
 
       if (!res.ok) throw new Error('Error al generar el resumen');
       const data = (await res.json()) as { summary: string };
       setSummary(data.summary);
     } catch {
-      setError(lang === 'es' ? 'No se pudo generar el resumen. Intenta de nuevo.' : 'Failed to generate summary. Please try again.');
+      setError(
+        lang === 'es'
+          ? 'No se pudo generar el resumen. Intenta de nuevo.'
+          : 'Failed to generate summary. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -57,8 +56,8 @@ export function AIMonthlySummary({ month, year }: AIMonthlySummaryProps) {
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#1E3A5F]">Resumen IA del mes</p>
-              <p className="text-xs text-slate-500">Generado por Gemini · no se guarda</p>
+              <p className="text-sm font-semibold text-[#1E3A5F]">Resumen financiero</p>
+              <p className="text-xs text-slate-500">Histórico acumulado · Generado por Gemini</p>
             </div>
           </div>
 
@@ -66,21 +65,15 @@ export function AIMonthlySummary({ month, year }: AIMonthlySummaryProps) {
           <div className="flex items-center gap-1 rounded-lg border border-[#E2E8F0] p-0.5">
             <button
               onClick={() => { setLang('es'); setSummary(null); setError(null); }}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                lang === 'es'
-                  ? 'bg-[#1E3A5F] text-white'
-                  : 'text-slate-500 hover:text-[#1E3A5F]'
-              }`}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${lang === 'es' ? 'bg-[#1E3A5F] text-white' : 'text-slate-500 hover:text-[#1E3A5F]'
+                }`}
             >
               ES
             </button>
             <button
               onClick={() => { setLang('en'); setSummary(null); setError(null); }}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                lang === 'en'
-                  ? 'bg-[#1E3A5F] text-white'
-                  : 'text-slate-500 hover:text-[#1E3A5F]'
-              }`}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${lang === 'en' ? 'bg-[#1E3A5F] text-white' : 'text-slate-500 hover:text-[#1E3A5F]'
+                }`}
             >
               EN
             </button>
@@ -140,8 +133,8 @@ export function AIMonthlySummary({ month, year }: AIMonthlySummaryProps) {
             >
               <p className="text-sm text-slate-500">
                 {lang === 'es'
-                  ? 'Genera un análisis narrativo de tus finanzas de este mes con IA.'
-                  : 'Generate an AI-powered narrative analysis of your finances this month.'}
+                  ? 'Genera un análisis global de toda tu historia financiera con IA.'
+                  : 'Generate a global AI-powered analysis of your entire financial history.'}
               </p>
               <Button
                 onClick={handleGenerate}
@@ -149,7 +142,7 @@ export function AIMonthlySummary({ month, year }: AIMonthlySummaryProps) {
                 className="gap-2 bg-[#1E3A5F] hover:bg-[#2E86AB] text-white"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {lang === 'es' ? 'Generar resumen con IA' : 'Generate AI summary'}
+                {lang === 'es' ? 'Generar resumen' : 'Generate summary'}
               </Button>
             </motion.div>
           )}

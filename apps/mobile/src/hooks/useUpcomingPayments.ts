@@ -5,6 +5,7 @@ export interface UpcomingPayment {
   type: 'loan' | 'debt';
   id: string;
   name: string;
+  subtitle: string;
   amount: number;
   dueDate: string;
   daysUntilDue: number;
@@ -23,10 +24,11 @@ export function useUpcomingPayments() {
       const now = new Date();
 
       const loanPayments: UpcomingPayment[] = loanInstallments.map(
-        (i: { id: string; loan: { borrowerName: string }; amount: number; dueDate: string }) => ({
+        (i: { id: string; number: number; loan: { borrowerName: string }; amount: number; dueDate: string }) => ({
           type: 'loan' as const,
           id: i.id,
           name: i.loan.borrowerName,
+          subtitle: `Cuota #${i.number} · Préstamo`,
           amount: i.amount,
           dueDate: i.dueDate,
           daysUntilDue: Math.ceil(
@@ -40,6 +42,7 @@ export function useUpcomingPayments() {
           type: 'debt' as const,
           id: d.id,
           name: d.creditorName,
+          subtitle: 'Deuda pendiente',
           amount: d.totalAmount - d.paidAmount,
           dueDate: d.dueDate,
           daysUntilDue: Math.ceil(

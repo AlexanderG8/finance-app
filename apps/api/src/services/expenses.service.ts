@@ -70,6 +70,7 @@ export async function createExpense(userId: string, input: CreateExpenseInput) {
       date: new Date(input.date),
       isRecurring: input.isRecurring,
       notes: input.notes,
+      creditCardId: input.creditCardId ?? null,
     },
     include: { category: true },
   });
@@ -114,6 +115,7 @@ export async function updateExpense(userId: string, expenseId: string, input: Up
       ...(input.date !== undefined ? { date: new Date(input.date) } : {}),
       ...(input.isRecurring !== undefined ? { isRecurring: input.isRecurring } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.creditCardId !== undefined ? { creditCardId: input.creditCardId ?? null } : {}),
     },
     include: { category: true },
   });
@@ -168,6 +170,36 @@ export async function getMonthlySummary(userId: string, month: number, year: num
   return {
     month,
     year,
+    totalAmount,
+    byCategory: Object.values(summary),
+  };
+}
+
+export async function getGlobalExpensesSummary(userId: string) {
+  const expenses = await prisma.expense.findMany({
+    where: { userId },
+    include: { category: true },
+  });
+
+  const summary: Record<string, SummaryItem> = {};
+
+  for (const expense of expenses) {
+    const key = expense.categoryId;
+    if (!summary[key]) {
+      const cat: CategoryData = expense.category;
+      summary[key] = {
+        category: { id: cat.id, name: cat.name, emoji: cat.emoji, color: cat.color },
+        total: 0,
+        count: 0,
+      };
+    }
+    summary[key]!.total += Number(expense.amount);
+    summary[key]!.count += 1;
+  }
+
+  const totalAmount = expenses.reduce((sum: number, e) => sum + Number(e.amount), 0);
+
+  return {
     totalAmount,
     byCategory: Object.values(summary),
   };

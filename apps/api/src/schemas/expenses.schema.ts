@@ -21,6 +21,7 @@ export const createExpenseSchema = z.object({
   date: z.string().datetime('Fecha inválida.'),
   isRecurring: z.boolean().default(false),
   notes: z.string().max(500, 'Las notas no pueden exceder 500 caracteres.').optional(),
+  creditCardId: z.string().cuid('ID de tarjeta inválido.').optional().nullable(),
 });
 
 export const updateExpenseSchema = createExpenseSchema.partial();

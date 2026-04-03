@@ -39,7 +39,7 @@
 | 4 | **Deudas** | Deudas personales con historial de pagos |
 | 5 | **Ahorros** | Metas de ahorro con progreso y proyección |
 | 6 | **Ingresos** | Registro de ingresos por fuente con resumen mensual |
-| 7 | **Dashboard** | Resumen financiero con balance real (ingresos − gastos − pagos de deudas) |
+| 7 | **Dashboard** | Resumen financiero global (histórico acumulado): ingresos − gastos − pagos de deudas − préstamos + cobros |
 | 8 | **Notificaciones** | Alertas por email (Fase 1) |
 
 ---
@@ -329,6 +329,11 @@ enum DebtStatus {
   PAID
 }
 
+enum DebtType {
+  CASH
+  CREDIT
+}
+
 enum SavingGoalType {
   OBJECTIVE
   EMERGENCY
@@ -493,6 +498,7 @@ model PersonalDebt {
   totalAmount   Decimal     @db.Decimal(12, 2)
   paidAmount    Decimal     @db.Decimal(12, 2) @default(0)
   currency      Currency    @default(PEN)
+  debtType      DebtType    @default(CASH)      // CASH suma al balance, CREDIT no
   numberOfInstallments Int?
   dueDate       DateTime?
   paymentMethod PaymentMethod
@@ -803,6 +809,16 @@ GET    /:id/installments   → Listar cuotas del préstamo
 POST   /:id/installments/:installmentId/pay → Registrar pago de cuota
 ```
 
+### Tarjetas de crédito — `/api/v1/credit-cards` [AUTH en todos]
+```
+GET    /                   → Listar tarjetas del usuario
+POST   /                   → Crear tarjeta
+GET    /:id                → Detalle de tarjeta
+GET    /:id/cycle          → Resumen del ciclo activo (totalSpent, cycleStart, cycleEnd, paymentDueDate, daysUntilPayment, expenses[])
+PUT    /:id                → Actualizar tarjeta
+DELETE /:id                → Eliminar tarjeta (Expense.creditCardId se pone en null via SetNull)
+```
+
 ### Deudas — `/api/v1/debts` [AUTH en todos]
 ```
 GET    /                   → Listar (query: status, page, limit)
@@ -836,16 +852,17 @@ DELETE /:id                → Eliminar
 
 ### Dashboard — `/api/v1/dashboard` [AUTH en todos]
 ```
-GET    /summary            → Resumen general:
-                             - expenses: { total, byCategory } del mes
-                             - income: { total, bySource } del mes
-                             - debtPayments: { total } pagos a deudas del mes (por paidAt)
-                             - debtReceived: { total } deudas registradas el mes (suman al balance)
-                             - loanDisbursements: { total } préstamos desembolsados el mes (restan)
-                             - loanCollections: { total } cobros de cuotas el mes (suman)
+GET    /summary            → Resumen GLOBAL (histórico acumulado, sin filtro por mes):
+                             - expenses: { total, byCategory } acumulado histórico
+                             - income: { total, bySource } acumulado histórico
+                             - debtPayments: { total } todos los pagos a deudas (histórico)
+                             - debtReceived: { total } solo deudas CASH (suman al balance)
+                             - loanDisbursements: { total } total prestado (histórico)
+                             - loanCollections: { total } total cobrado (histórico)
                              - balance: income + debtReceived − expenses − debtPayments
                                         − loanDisbursements + loanCollections
                              - loans, debts, savings
+                             NOTA: debtReceived solo incluye PersonalDebt con debtType='CASH'
 GET    /upcoming-payments  → Próximos vencimientos (loans + debts, próximos 7 días)
 ```
 
@@ -1257,6 +1274,23 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 [x] Dashboard — balance muestra desglose completo: debtReceived, loanDisbursements, loanCollections
 [x] Web — confirmación con Dialog (shadcn/ui) antes de eliminar en todas las secciones
 [x] Mobile — preview de cálculo siempre visible al tope del formulario de préstamos
+
+[x] Deudas — campo debtType (CASH | CREDIT): migración add_debt_type en Prisma
+[x] Deudas — deudas CASH suman al balance (debtReceived), deudas CREDIT no
+[x] Deudas — selector visual de tipo en formulario (web y mobile)
+[x] Deudas — badge de tipo en DebtCard y en página de detalle /debts/[id] (web y mobile)
+[x] Deudas — tipos compartidos: DebtType exportado en packages/shared y useDebts.ts (mobile)
+[x] Dashboard — métricas cambiadas de mensual a GLOBAL/histórico (web y mobile)
+[x] Dashboard — debtReceived filtra solo deudas CASH (loans.service.ts getCurrentBalance también)
+[x] Dashboard web — LoanStatusBar siempre visible (sin condición totalLent > 0), movido arriba
+[x] Dashboard web — labels actualizados: "Ingresos totales", "Gastos totales", "Balance total"
+[x] Dashboard mobile — label "Balance del mes" → "Balance total"
+[x] Mobile Gastos — filtro por año agregado (selector horizontal de últimos 5 años)
+[x] Mobile Ingresos — filtro por año agregado (selector horizontal de últimos 5 años)
+[x] Bug fix — debts.service.ts no pasaba debtType a Prisma en createDebt/updateDebt
+[x] Bug fix — DebtFormModal web: setValue('debtType') sin { shouldDirty, shouldValidate } no marcaba el campo
+[x] Bug fix — debts.tsx mobile: payload de handleSubmit no incluía debtType
+[x] Bug fix — useDebtForm.ts mobile: DebtPayload interface no tenía campo debtType
 ```
 
 ### Sprint 12 — QA y Deploy Web (Pendiente)

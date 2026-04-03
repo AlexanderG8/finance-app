@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api-client';
 
 interface DashboardSummary {
-  currentMonth: { month: number; year: number };
   expenses: {
     total: number;
     byCategory: Array<{

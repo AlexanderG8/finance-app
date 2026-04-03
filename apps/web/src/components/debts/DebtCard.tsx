@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { DebtStatusBadge } from './DebtStatusBadge';
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
 import type { PersonalDebt } from '@finance-app/shared';
@@ -24,6 +25,11 @@ const paymentMethodLabels: Record<string, string> = {
   PLIN: 'Plin',
   BANK_TRANSFER: 'Transferencia bancaria',
   CASH: 'Efectivo',
+};
+
+const debtTypeConfig: Record<string, { label: string; className: string }> = {
+  CASH: { label: 'Efectivo', className: 'bg-green-100 text-green-700' },
+  CREDIT: { label: 'Crédito', className: 'bg-blue-100 text-blue-700' },
 };
 
 interface DebtCardProps {
@@ -67,7 +73,12 @@ export function DebtCard({ debt, onPay, onEdit, onDelete }: DebtCardProps) {
               </p>
             </div>
           </div>
-          <DebtStatusBadge status={debt.status} />
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge className={`text-xs ${debtTypeConfig[debt.debtType]?.className ?? ''}`}>
+              {debtTypeConfig[debt.debtType]?.label ?? debt.debtType}
+            </Badge>
+            <DebtStatusBadge status={debt.status} />
+          </div>
         </div>
 
         {/* Amounts */}

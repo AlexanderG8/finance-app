@@ -6,6 +6,7 @@ interface DebtPayload {
   creditorName: string;
   totalAmount: number;
   currency: string;
+  debtType: string;
   numberOfInstallments?: number;
   dueDate?: string;
   paymentMethod: string;

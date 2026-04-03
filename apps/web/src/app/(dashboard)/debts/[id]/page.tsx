@@ -44,6 +44,11 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: 'Efectivo',
 };
 
+const DEBT_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
+  CASH: { label: 'Efectivo', className: 'bg-green-100 text-green-700' },
+  CREDIT: { label: 'Crédito', className: 'bg-blue-100 text-blue-700' },
+};
+
 export default function DebtDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -101,9 +106,14 @@ export default function DebtDetailPage() {
                     <p className="text-sm text-slate-500 mt-1">{debt.notes}</p>
                   )}
                 </div>
-                <Badge className={DEBT_STATUS_CLASSES[debt.status]}>
-                  {DEBT_STATUS_LABELS[debt.status]}
-                </Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge className={DEBT_TYPE_CONFIG[debt.debtType]?.className ?? ''}>
+                    {DEBT_TYPE_CONFIG[debt.debtType]?.label ?? debt.debtType}
+                  </Badge>
+                  <Badge className={DEBT_STATUS_CLASSES[debt.status]}>
+                    {DEBT_STATUS_LABELS[debt.status]}
+                  </Badge>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4 mb-5">

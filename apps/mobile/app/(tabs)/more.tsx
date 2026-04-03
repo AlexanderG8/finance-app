@@ -6,6 +6,8 @@ import { getInitials } from '@/lib/utils';
 
 const menuItems = [
   { label: 'Ingresos', emoji: '💰', available: true, route: '/incomes' },
+  { label: 'Tarjetas de crédito', emoji: '💳', available: true, route: '/credit-cards' },
+  { label: 'Mis categorías', emoji: '🏷️', available: true, route: '/categories' },
   { label: 'Asistente IA', emoji: '🤖', available: true, route: '/ai-chat' },
   { label: 'Configuración', emoji: '⚙️', available: true, route: '/settings' },
 ];

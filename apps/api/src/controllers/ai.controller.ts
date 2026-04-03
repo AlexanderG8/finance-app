@@ -10,7 +10,6 @@ import * as debtsService from '../services/debts.service';
 import * as savingsService from '../services/savings.service';
 import * as loansService from '../services/loans.service';
 import * as chatService from '../services/chat.service';
-import { startOfMonth, endOfMonth } from 'date-fns';
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -46,143 +45,202 @@ export async function chat(req: Request, res: Response, next: NextFunction): Pro
     console.log('[AI/chat] Step 1: fetching data for userId:', userId);
 
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const monthName = MONTH_NAMES[now.getMonth()];
 
-    // Fetch financial context + history in parallel
+    // Fetch ALL financial data + history in parallel (no month filter)
     const [
       user,
       history,
-      loanSummary,
-      monthlySummary,
-      incomeSummary,
-      debtsList,
+      allExpenses,
+      allIncomes,
+      allLoans,
+      allDebts,
       savingGoals,
-      debtPaymentsAggregate,
-      recentExpenses,
-      recentIncomes,
-      activeLoans,
+      globalIncome,
+      globalExpenses,
+      totalDebtPayments,
+      totalLoanDisbursements,
+      totalLoanCollections,
     ] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
       chatService.getChatHistory(userId, 20),
-      loansService.getLoanSummary(userId),
-      expensesService.getMonthlySummary(userId, month, year),
-      incomeService.getMonthlyIncomeSummary(userId, month, year),
-      debtsService.listDebts(userId, { page: 1, limit: 100 }),
-      savingsService.listSavingGoals(userId),
-      prisma.debtPayment.aggregate({
-        where: {
-          debt: { userId },
-          paidAt: { gte: startOfMonth(now), lte: endOfMonth(now) },
-        },
-        _sum: { amount: true },
-      }),
       prisma.expense.findMany({
-        where: { userId, date: { gte: startOfMonth(now), lte: endOfMonth(now) } },
+        where: { userId },
         include: { category: true },
         orderBy: { date: 'desc' },
-        take: 50,
+        take: 500,
       }),
       prisma.income.findMany({
-        where: { userId, date: { gte: startOfMonth(now), lte: endOfMonth(now) } },
+        where: { userId },
         orderBy: { date: 'desc' },
-        take: 20,
+        take: 300,
       }),
       prisma.loan.findMany({
-        where: { userId, status: 'ACTIVE' },
-        take: 10,
+        where: { userId },
+        orderBy: { loanDate: 'desc' },
+        take: 100,
       }),
+      prisma.personalDebt.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+      savingsService.listSavingGoals(userId),
+      prisma.income.aggregate({ where: { userId }, _sum: { amount: true } }),
+      prisma.expense.aggregate({ where: { userId }, _sum: { amount: true } }),
+      prisma.debtPayment.aggregate({ where: { debt: { userId } }, _sum: { amount: true } }),
+      prisma.loan.aggregate({ where: { userId }, _sum: { principal: true } }),
+      prisma.loanPayment.aggregate({ where: { installment: { loan: { userId } } }, _sum: { amount: true } }),
     ]);
 
-    console.log('[AI/chat] Step 2: data fetched OK. history.length:', history.length, '| expenses:', recentExpenses.length);
+    console.log('[AI/chat] Step 2: data fetched OK. history:', history.length, '| expenses:', allExpenses.length, '| incomes:', allIncomes.length);
 
-    const totalDebtsPending = debtsList.data.reduce(
-      (sum: number, d: { totalAmount: number; paidAmount: number }) => sum + (d.totalAmount - d.paidAmount),
+    // Group expenses by month
+    const expensesByMonth = new Map<string, { total: number; byCategory: Map<string, number> }>();
+    const recentCutoff = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const recentExpenseLines: string[] = [];
+
+    allExpenses.forEach((e) => {
+      const d = new Date(e.date);
+      const key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+      if (!expensesByMonth.has(key)) {
+        expensesByMonth.set(key, { total: 0, byCategory: new Map() });
+      }
+      const entry = expensesByMonth.get(key)!;
+      const amount = Number(e.amount);
+      entry.total += amount;
+      const cat = e.category.name;
+      entry.byCategory.set(cat, (entry.byCategory.get(cat) ?? 0) + amount);
+      if (d >= recentCutoff) {
+        recentExpenseLines.push(`  ${d.toLocaleDateString('es-PE')} | ${e.description} | ${cat} | S/ ${amount.toFixed(2)}`);
+      }
+    });
+
+    // Group incomes by month
+    const incomesByMonth = new Map<string, { total: number; bySource: Map<string, number> }>();
+    const recentIncomeLines: string[] = [];
+
+    allIncomes.forEach((i) => {
+      const d = new Date(i.date);
+      const key = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+      if (!incomesByMonth.has(key)) {
+        incomesByMonth.set(key, { total: 0, bySource: new Map() });
+      }
+      const entry = incomesByMonth.get(key)!;
+      const amount = Number(i.amount);
+      entry.total += amount;
+      entry.bySource.set(i.source, (entry.bySource.get(i.source) ?? 0) + amount);
+      if (d >= recentCutoff) {
+        recentIncomeLines.push(`  ${d.toLocaleDateString('es-PE')} | ${i.description} | ${i.source} | S/ ${amount.toFixed(2)}`);
+      }
+    });
+
+    // Format monthly expense summary
+    const expensesMonthlySummary = Array.from(expensesByMonth.entries())
+      .map(([month, data]) => {
+        const cats = Array.from(data.byCategory.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, total]) => `    • ${cat}: S/ ${total.toFixed(2)}`)
+          .join('\n');
+        return `${month} | Total: S/ ${data.total.toFixed(2)}\n${cats}`;
+      })
+      .join('\n\n');
+
+    // Format monthly income summary
+    const incomesMonthlySummary = Array.from(incomesByMonth.entries())
+      .map(([month, data]) => {
+        const sources = Array.from(data.bySource.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([src, total]) => `    • ${src}: S/ ${total.toFixed(2)}`)
+          .join('\n');
+        return `${month} | Total: S/ ${data.total.toFixed(2)}\n${sources}`;
+      })
+      .join('\n\n');
+
+    // Global totals
+    const totalIncome = Number(globalIncome._sum.amount ?? 0);
+    const totalExpenses = Number(globalExpenses._sum.amount ?? 0);
+    const totalDebtPaid = Number(totalDebtPayments._sum.amount ?? 0);
+    const totalLoanDisb = Number(totalLoanDisbursements._sum.principal ?? 0);
+    const totalLoanColl = Number(totalLoanCollections._sum.amount ?? 0);
+    const globalBalance = totalIncome - totalExpenses - totalDebtPaid - totalLoanDisb + totalLoanColl;
+
+    const totalDebtsPending = allDebts.reduce(
+      (sum, d) => sum + (Number(d.totalAmount) - Number(d.paidAmount)),
       0,
     );
-    const totalSavings = savingGoals.reduce((sum: number, g: { currentAmount: number }) => sum + g.currentAmount, 0);
-    const debtPaymentsTotal = Number(debtPaymentsAggregate._sum.amount ?? 0);
-    const balance = incomeSummary.totalAmount - monthlySummary.totalAmount - debtPaymentsTotal;
+    const totalSavings = savingGoals.reduce((sum: number, g: { currentAmount: number }) => sum + Number(g.currentAmount), 0);
 
-    const expensesList = formatList(
-      recentExpenses.map(
-        (e) =>
-          `${new Date(e.date).toLocaleDateString('es-PE')} | ${e.description} | ${e.category.name} | S/ ${Number(e.amount).toFixed(2)}`,
+    const loansList = formatList(
+      allLoans.map(
+        (l) =>
+          `${l.borrowerName} | Prestado: S/ ${Number(l.principal).toFixed(2)} | Total a cobrar: S/ ${Number(l.totalAmount).toFixed(2)} | Cuota: S/ ${Number(l.installmentAmount).toFixed(2)} x ${l.numberOfInstallments} | Estado: ${l.status} | Fecha: ${new Date(l.loanDate).toLocaleDateString('es-PE')}${l.notes ? ` | Nota: ${l.notes}` : ''}`,
       ),
     );
 
-    const incomesList = formatList(
-      recentIncomes.map(
-        (i) =>
-          `${new Date(i.date).toLocaleDateString('es-PE')} | ${i.description} | ${i.source} | S/ ${Number(i.amount).toFixed(2)}`,
-      ),
-    );
-
-    const debtsList2 = formatList(
-      debtsList.data.map(
-        (d: { creditorName: string; totalAmount: number; paidAmount: number; status: string }) => {
-          const pending = d.totalAmount - d.paidAmount;
-          return `${d.creditorName} | S/ ${d.totalAmount.toFixed(2)} total | S/ ${d.paidAmount.toFixed(2)} pagado | S/ ${pending.toFixed(2)} pendiente | ${d.status}`;
-        },
-      ),
+    const debtsList = formatList(
+      allDebts.map((d) => {
+        const pending = Number(d.totalAmount) - Number(d.paidAmount);
+        return `${d.creditorName} | Tipo: ${d.debtType} | Total: S/ ${Number(d.totalAmount).toFixed(2)} | Pagado: S/ ${Number(d.paidAmount).toFixed(2)} | Pendiente: S/ ${pending.toFixed(2)} | Estado: ${d.status}${d.dueDate ? ` | Vence: ${new Date(d.dueDate).toLocaleDateString('es-PE')}` : ''}`;
+      }),
     );
 
     const savingsList = formatList(
-      savingGoals.map((g: { name: string; targetAmount: number; currentAmount: number }) => {
-        const pct = g.targetAmount > 0 ? Math.round((g.currentAmount / g.targetAmount) * 100) : 0;
-        return `${g.name} | Meta: S/ ${g.targetAmount.toFixed(2)} | Ahorrado: S/ ${g.currentAmount.toFixed(2)} | ${pct}%`;
+      savingGoals.map((g: { name: string; targetAmount: number; currentAmount: number; status: string; targetDate?: Date | null }) => {
+        const pct = Number(g.targetAmount) > 0 ? Math.round((Number(g.currentAmount) / Number(g.targetAmount)) * 100) : 0;
+        return `${g.name} | Meta: S/ ${Number(g.targetAmount).toFixed(2)} | Ahorrado: S/ ${Number(g.currentAmount).toFixed(2)} | ${pct}% | Estado: ${g.status}${g.targetDate ? ` | Fecha objetivo: ${new Date(g.targetDate).toLocaleDateString('es-PE')}` : ''}`;
       }),
-    );
-
-    const loansList = formatList(
-      activeLoans.map(
-        (l) =>
-          `${l.borrowerName} | Prestado: S/ ${Number(l.principal).toFixed(2)} | Total a cobrar: S/ ${Number(l.totalAmount).toFixed(2)} | Cuota: S/ ${Number(l.installmentAmount).toFixed(2)} x ${l.numberOfInstallments} | Estado: ${l.status}`,
-      ),
     );
 
     const userName = user?.name ?? 'Usuario';
     const systemPrompt = `Eres un asesor financiero personal de ${userName}.
 Solo tienes acceso a los datos financieros de este usuario específico.
+Hoy es ${now.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
 
-INSTRUCCIÓN DE IDIOMA: Detecta el idioma en que el usuario escribe su mensaje y responde SIEMPRE en ese mismo idioma. Si escribe en español, responde en español. Si escribe en inglés, responde en inglés.
+INSTRUCCIÓN DE IDIOMA: Detecta el idioma en que el usuario escribe su mensaje y responde SIEMPRE en ese mismo idioma.
 
-INSTRUCCIÓN DE FORMATO: Usa texto plano sin markdown. No uses asteriscos, almohadillas ni símbolos de formato. Usa saltos de línea para separar ideas. Sé amigable y profesional, como un asesor de confianza.
+INSTRUCCIÓN DE FORMATO: Usa texto plano sin markdown. No uses asteriscos, almohadillas ni símbolos de formato. Usa saltos de línea para separar ideas. Sé amigable y profesional.
 
-INSTRUCCIÓN DE EXTENSIÓN: Adapta la extensión de tu respuesta a la complejidad de la pregunta. Para preguntas simples sé breve (1-2 oraciones). Para análisis o planes financieros sé detallado y estructurado.
+INSTRUCCIÓN DE EXTENSIÓN: Adapta la extensión de tu respuesta a la complejidad de la pregunta. Para preguntas simples sé breve. Para análisis financieros sé detallado.
 
-DATOS FINANCIEROS ACTUALES (${monthName} ${year}):
-- Ingresos del mes: S/ ${incomeSummary.totalAmount.toFixed(2)}
-- Gastos del mes: S/ ${monthlySummary.totalAmount.toFixed(2)}
-- Pagos a deudas del mes: S/ ${debtPaymentsTotal.toFixed(2)}
-- Balance real del mes (Ingresos - Gastos - Pagos de deudas): S/ ${balance.toFixed(2)}
-- Deudas pendientes totales: S/ ${totalDebtsPending.toFixed(2)}
-- Ahorros acumulados: S/ ${totalSavings.toFixed(2)} en ${savingGoals.length} meta(s)
-- Préstamos activos por cobrar: S/ ${loanSummary.totalPending?.toFixed(2) ?? '0.00'} (${loanSummary.activeLoans ?? 0} préstamo(s))
+━━━ RESUMEN GLOBAL HISTÓRICO (acumulado total) ━━━
+Ingresos totales: S/ ${totalIncome.toFixed(2)}
+Gastos totales: S/ ${totalExpenses.toFixed(2)}
+Pagos a deudas totales: S/ ${totalDebtPaid.toFixed(2)}
+Préstamos desembolsados totales: S/ ${totalLoanDisb.toFixed(2)}
+Cobros de préstamos totales: S/ ${totalLoanColl.toFixed(2)}
+Balance general: S/ ${globalBalance.toFixed(2)}
+Deudas pendientes: S/ ${totalDebtsPending.toFixed(2)}
+Ahorros acumulados: S/ ${totalSavings.toFixed(2)} en ${savingGoals.length} meta(s)
 
-GASTOS DEL MES (${monthName} ${year}):
-${expensesList}
+━━━ GASTOS POR MES (desglose por categoría) ━━━
+${expensesMonthlySummary || 'Sin gastos registrados'}
 
-INGRESOS DEL MES (${monthName} ${year}):
-${incomesList}
+━━━ INGRESOS POR MES (desglose por fuente) ━━━
+${incomesMonthlySummary || 'Sin ingresos registrados'}
 
-PRÉSTAMOS ACTIVOS:
+━━━ DETALLE DE TRANSACCIONES RECIENTES (últimos 2 meses) ━━━
+Gastos recientes:
+${recentExpenseLines.length > 0 ? recentExpenseLines.join('\n') : '  Ninguno'}
+
+Ingresos recientes:
+${recentIncomeLines.length > 0 ? recentIncomeLines.join('\n') : '  Ninguno'}
+
+━━━ TODOS LOS PRÉSTAMOS ━━━
 ${loansList}
 
-DEUDAS PENDIENTES:
-${debtsList2}
+━━━ TODAS LAS DEUDAS ━━━
+${debtsList}
 
-METAS DE AHORRO:
+━━━ METAS DE AHORRO ━━━
 ${savingsList}
 
 REGLAS:
 - Usa montos en soles (S/) para valores en PEN.
 - Si el usuario pregunta datos que no están en el contexto, dilo honestamente.
 - No inventes cifras ni datos que no estén en el contexto.
-- No compartas ni hagas referencia a datos de otros usuarios.`;
+- Puedes calcular totales, promedios y comparativas a partir de los datos disponibles.`;
 
-    // Build messages array (CoreMessage[]) — identical structure to web's convertToModelMessages
+    // Build messages array (CoreMessage[])
     const messages: CoreMessage[] = [
       ...history.map((m) => ({
         role: m.role as 'user' | 'assistant',
@@ -202,7 +260,6 @@ REGLAS:
 
     console.log('[AI/chat] Step 4: generateText OK. response length:', result.text?.length);
 
-    // Save both messages to history
     await chatService.saveChatMessages(userId, message, result.text);
 
     console.log('[AI/chat] Step 5: history saved OK.');
@@ -214,32 +271,30 @@ REGLAS:
   }
 }
 
-// ─── POST /ai/monthly-summary ─────────────────────────────────────────────────
+// ─── POST /ai/global-summary ──────────────────────────────────────────────────
 export async function monthlySummary(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user.id;
-    const body = req.body as { month?: number; year?: number; lang?: string };
-    const now = new Date();
-    const month = body.month ?? now.getMonth() + 1;
-    const year = body.year ?? now.getFullYear();
+    const body = req.body as { lang?: string };
     const lang = body.lang ?? 'es';
     const langLabel = lang === 'en' ? 'English' : 'Spanish';
-    const monthName = MONTH_NAMES[month - 1] ?? '';
 
     const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
     const userName = dbUser?.name ?? 'Usuario';
 
-    const [expensesSummary, incomeSummaryData, debtPaymentsAggregate] = await Promise.all([
-      expensesService.getMonthlySummary(userId, month, year),
-      incomeService.getMonthlyIncomeSummary(userId, month, year),
+    const [expensesSummary, incomeSummaryData, debtPaymentsAggregate, loanDisbursementsAggregate, loanCollectionsAggregate] = await Promise.all([
+      expensesService.getGlobalExpensesSummary(userId),
+      incomeService.getGlobalIncomeSummary(userId),
       prisma.debtPayment.aggregate({
-        where: {
-          debt: { userId },
-          paidAt: {
-            gte: new Date(year, month - 1, 1),
-            lt: new Date(year, month, 1),
-          },
-        },
+        where: { debt: { userId } },
+        _sum: { amount: true },
+      }),
+      prisma.loan.aggregate({
+        where: { userId },
+        _sum: { principal: true },
+      }),
+      prisma.loanPayment.aggregate({
+        where: { installment: { loan: { userId } } },
         _sum: { amount: true },
       }),
     ]);
@@ -247,9 +302,13 @@ export async function monthlySummary(req: Request, res: Response, next: NextFunc
     const totalExpenses = expensesSummary.totalAmount;
     const totalIncome = incomeSummaryData.totalAmount;
     const totalDebtPayments = Number(debtPaymentsAggregate._sum.amount ?? 0);
-    const balance = totalIncome - totalExpenses - totalDebtPayments;
+    const totalLoanDisbursements = Number(loanDisbursementsAggregate._sum.principal ?? 0);
+    const totalLoanCollections = Number(loanCollectionsAggregate._sum.amount ?? 0);
+    const balance = totalIncome - totalExpenses - totalDebtPayments - totalLoanDisbursements + totalLoanCollections;
 
     const expensesByCategory = expensesSummary.byCategory
+      .sort((a: { total: number }, b: { total: number }) => b.total - a.total)
+      .slice(0, 8)
       .map((c: { category: { name: string }; total: number; count: number }) =>
         `- ${c.category.name}: S/ ${c.total.toFixed(2)} (${c.count} gastos)`,
       )
@@ -260,22 +319,24 @@ export async function monthlySummary(req: Request, res: Response, next: NextFunc
       .join('\n');
 
     const prompt = `You are a personal finance advisor for ${userName}.
-Generate a concise executive summary of their financial month in 3-4 sentences.
+Generate a concise executive summary of their overall financial situation in 3-4 sentences.
 Respond ONLY in ${langLabel}. Do not use markdown formatting.
 
-FINANCIAL DATA FOR ${monthName} ${year}:
-Total income: S/ ${totalIncome.toFixed(2)}
-Total expenses: S/ ${totalExpenses.toFixed(2)}
-Debt payments this month: S/ ${totalDebtPayments.toFixed(2)}
-Real balance (income - expenses - debt payments): S/ ${balance.toFixed(2)}
+HISTORICAL (ALL-TIME) FINANCIAL DATA:
+Total income recorded: S/ ${totalIncome.toFixed(2)}
+Total expenses recorded: S/ ${totalExpenses.toFixed(2)}
+Total debt payments made: S/ ${totalDebtPayments.toFixed(2)}
+Total loans disbursed: S/ ${totalLoanDisbursements.toFixed(2)}
+Total loan collections received: S/ ${totalLoanCollections.toFixed(2)}
+Overall balance: S/ ${balance.toFixed(2)}
 
-Expenses by category:
+Top expenses by category (all time):
 ${expensesByCategory || 'No expenses recorded'}
 
-Income by source:
+Income by source (all time):
 ${incomeBySource || 'No income recorded'}
 
-Write a helpful, friendly, and actionable 3-4 sentence summary. Use the real balance that already discounts both expenses and debt payments. Mention the most relevant insights.`;
+Write a helpful, friendly, and actionable 3-4 sentence summary of the user's overall financial health. Highlight their biggest spending categories, income sources, and the overall balance. Mention the most relevant insights for improving their finances.`;
 
     const result = await generateText({
       model: google('gemini-3.1-flash-lite-preview'),

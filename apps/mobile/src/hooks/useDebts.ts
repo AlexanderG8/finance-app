@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
 
 export type DebtStatus = 'PENDING' | 'PARTIAL' | 'PAID';
+export type DebtType = 'CASH' | 'CREDIT';
 
 export interface DebtPayment {
   id: string;
@@ -23,6 +24,7 @@ export interface Debt {
   numberOfInstallments: number | null;
   dueDate: string | null;
   paymentMethod: string;
+  debtType: DebtType;
   status: DebtStatus;
   notes: string | null;
   createdAt: string;

@@ -3,10 +3,12 @@ import { apiClient } from '@/lib/api-client';
 
 export interface Category {
   id: string;
+  userId: string | null;
   name: string;
   emoji: string;
   color: string;
   createdAt: string;
+  isUserCategory: boolean;
 }
 
 export function useCategories() {
@@ -28,4 +30,53 @@ export function useCategories() {
   }, []);
 
   return { categories, isLoading, error, fetchCategories };
+}
+
+export function useCategoryForm() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function createCategory(input: {
+    name: string;
+    emoji: string;
+    color: string;
+  }): Promise<Category | null> {
+    try {
+      setIsSubmitting(true);
+      const { data } = await apiClient.post('/categories', input);
+      return data.data as Category;
+    } catch {
+      return null;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function updateCategory(
+    id: string,
+    input: { name?: string; emoji?: string; color?: string }
+  ): Promise<Category | null> {
+    try {
+      setIsSubmitting(true);
+      const { data } = await apiClient.put(`/categories/${id}`, input);
+      return data.data as Category;
+    } catch {
+      return null;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function deleteCategory(id: string): Promise<boolean> {
+    try {
+      setIsSubmitting(true);
+      await apiClient.delete(`/categories/${id}`);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return { isSubmitting, createCategory, updateCategory, deleteCategory };
 }

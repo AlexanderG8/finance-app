@@ -21,9 +21,9 @@ async function getCurrentBalance(userId: string): Promise<number> {
       where: { debt: { userId }, paidAt: { gte: monthStart, lte: monthEnd } },
       _sum: { amount: true },
     }),
-    // Deudas recibidas este mes (suman al balance — dinero que te prestaron)
+    // Deudas recibidas en efectivo este mes (suman al balance — dinero que te prestaron en mano)
     prisma.personalDebt.aggregate({
-      where: { userId, createdAt: { gte: monthStart, lte: monthEnd } },
+      where: { userId, debtType: 'CASH', createdAt: { gte: monthStart, lte: monthEnd } },
       _sum: { totalAmount: true },
     }),
     // Préstamos desembolsados este mes (restan al balance)

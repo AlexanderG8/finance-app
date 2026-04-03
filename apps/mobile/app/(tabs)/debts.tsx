@@ -81,6 +81,7 @@ export default function DebtsScreen() {
       creditorName: formData.creditorName.trim(),
       totalAmount: parseFloat(formData.totalAmount),
       currency: formData.currency,
+      debtType: formData.debtType,
       numberOfInstallments: installments && !isNaN(installments) ? installments : undefined,
       dueDate,
       paymentMethod: formData.paymentMethod,

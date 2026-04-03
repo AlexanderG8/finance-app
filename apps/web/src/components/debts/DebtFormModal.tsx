@@ -28,6 +28,7 @@ const debtSchema = z.object({
   creditorName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   totalAmount: z.coerce.number().positive('El monto debe ser mayor a 0'),
   currency: z.enum(['PEN', 'USD']),
+  debtType: z.enum(['CASH', 'CREDIT']),
   numberOfInstallments: z.coerce
     .number()
     .int()
@@ -68,11 +69,13 @@ export function DebtFormModal({ open, onClose, debt, onSuccess }: DebtFormModalP
     resolver: zodResolver(debtSchema),
     defaultValues: {
       currency: 'PEN',
+      debtType: 'CASH',
       paymentMethod: undefined,
     },
   });
 
   const currency = watch('currency');
+  const debtType = watch('debtType');
 
   useEffect(() => {
     if (open && debt) {
@@ -80,6 +83,7 @@ export function DebtFormModal({ open, onClose, debt, onSuccess }: DebtFormModalP
         creditorName: debt.creditorName,
         totalAmount: debt.totalAmount,
         currency: debt.currency,
+        debtType: debt.debtType as 'CASH' | 'CREDIT',
         numberOfInstallments: debt.numberOfInstallments ?? undefined,
         dueDate: debt.dueDate ? debt.dueDate.split('T')[0] : '',
         paymentMethod: debt.paymentMethod as 'YAPE' | 'PLIN' | 'BANK_TRANSFER' | 'CASH',
@@ -88,6 +92,7 @@ export function DebtFormModal({ open, onClose, debt, onSuccess }: DebtFormModalP
     } else if (!open) {
       reset({
         currency: 'PEN',
+        debtType: 'CASH',
         paymentMethod: undefined,
       });
     }
@@ -98,6 +103,7 @@ export function DebtFormModal({ open, onClose, debt, onSuccess }: DebtFormModalP
       creditorName: data.creditorName,
       totalAmount: data.totalAmount,
       currency: data.currency,
+      debtType: data.debtType,
       paymentMethod: data.paymentMethod,
       numberOfInstallments:
         data.numberOfInstallments
@@ -179,6 +185,37 @@ export function DebtFormModal({ open, onClose, debt, onSuccess }: DebtFormModalP
                   <SelectItem value="USD">USD (Dólares)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Debt type */}
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Tipo de deuda *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setValue('debtType', 'CASH', { shouldDirty: true, shouldValidate: true })}
+                  className={`flex flex-col items-start gap-1 rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                    debtType === 'CASH'
+                      ? 'border-[#28A745] bg-green-50'
+                      : 'border-[#E2E8F0] hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-sm font-semibold text-[#1E293B]">Efectivo</span>
+                  <span className="text-xs text-slate-500">Dinero recibido en mano o transferencia — suma a tu balance</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setValue('debtType', 'CREDIT', { shouldDirty: true, shouldValidate: true })}
+                  className={`flex flex-col items-start gap-1 rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                    debtType === 'CREDIT'
+                      ? 'border-[#2E86AB] bg-blue-50'
+                      : 'border-[#E2E8F0] hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-sm font-semibold text-[#1E293B]">Crédito</span>
+                  <span className="text-xs text-slate-500">Compra a crédito o tarjeta — no suma a tu balance</span>
+                </button>
+              </div>
             </div>
 
             {/* Number of installments */}

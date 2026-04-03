@@ -13,15 +13,8 @@ interface BalanceBarChartProps {
   loanDisbursements: number;
   loanCollections: number;
   balance: number;
-  month: number;
-  year: number;
   isLoading: boolean;
 }
-
-const MONTHS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
 
 const CustomTooltip = ({
   active,
@@ -46,10 +39,10 @@ const CustomTooltip = ({
   return null;
 };
 
-export function BalanceBarChart({ income, expenses, debtPayments, debtReceived, loanDisbursements, loanCollections, balance, month, year, isLoading }: BalanceBarChartProps) {
+export function BalanceBarChart({ income, expenses, debtPayments, debtReceived, loanDisbursements, loanCollections, balance, isLoading }: BalanceBarChartProps) {
   const data = [
     {
-      name: MONTHS[month - 1] + ' ' + year,
+      name: 'Total',
       Ingresos: income,
       'Deudas recibidas': debtReceived,
       'Cobros de cuotas': loanCollections,
@@ -65,7 +58,7 @@ export function BalanceBarChart({ income, expenses, debtPayments, debtReceived, 
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[#1E3A5F]">Balance del mes</CardTitle>
+          <CardTitle className="text-[#1E3A5F]">Balance total</CardTitle>
           {!isLoading && (
             <div className={`text-sm font-semibold px-3 py-1 rounded-full ${isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
               {isPositive ? '+' : ''}{formatCurrency(balance)}
