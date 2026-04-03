@@ -39,7 +39,7 @@ Thumbs.db
 .turbo
 
 # Prisma
-apps/api/prisma/migrations
+# Las migraciones SÍ deben estar en git para que prisma migrate deploy funcione en producción
 
 # Testing
 coverage

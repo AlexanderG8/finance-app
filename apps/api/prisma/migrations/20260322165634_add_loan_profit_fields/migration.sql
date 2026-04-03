@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "loans" ADD COLUMN     "interestAmount" DECIMAL(12,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "totalProfit" DECIMAL(12,2) NOT NULL DEFAULT 0;

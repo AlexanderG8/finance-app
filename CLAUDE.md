@@ -5,7 +5,7 @@
 > Este archivo es la única fuente de verdad del proyecto. Ante cualquier duda, consulta aquí primero.
 
 > **Estado actual:** Fase 1 (Web) — ✅ COMPLETADA (Sprints 1–11). Pendiente: Sprint 12 (Deploy).
-> **Fase 2 (Mobile)** — Sprints M1–M9 ✅ COMPLETADOS. Sprint M10 📋 Parcial (M10.1–M10.6 ✅). Ver documentación completa en `docs/MobileApp.md`.
+> **Fase 2 (Mobile)** — Sprints M1–M10 ✅ COMPLETADOS. Ver documentación completa en `docs/MobileApp.md`.
 
 ---
 
@@ -878,11 +878,13 @@ DELETE /history            → Limpiar historial del usuario
 > Todos requieren `Authorization: Bearer <accessToken>` y verifican el JWT contra `GET /auth/me`.
 ```
 POST /api/ai/chat                   → Chat financiero con streaming (Vercel AI SDK useChat)
-POST /api/ai/monthly-summary        → Resumen narrativo del mes { month, year, lang? }
+                                      Contexto: resumen global histórico + gastos/ingresos últimos 12 meses
+                                      (24 requests paralelos a endpoints /summary/monthly) + préstamos/deudas/ahorros
+POST /api/ai/monthly-summary        → Resumen narrativo del mes { month, year, lang? } — responde en español por defecto
 POST /api/ai/budget-recommendations → Recomendaciones de presupuesto basadas en últimos 3 meses
 POST /api/ai/debt-strategy          → Estrategia de pago (avalancha vs bola de nieve)
 POST /api/ai/savings-advice         → Asesoría de meta de ahorro { goalId }
-POST /api/ai/anomalies              → Detección de gastos inusuales vs promedio 2 meses anteriores
+POST /api/ai/anomalies              → Detección de gastos inusuales vs promedio 2 meses anteriores — responde en español
 ```
 
 **Modelo IA:** `gemini-3.1-flash-lite-preview` (Google Gemini vía `@ai-sdk/google`)
@@ -1291,6 +1293,21 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 [x] Bug fix — DebtFormModal web: setValue('debtType') sin { shouldDirty, shouldValidate } no marcaba el campo
 [x] Bug fix — debts.tsx mobile: payload de handleSubmit no incluía debtType
 [x] Bug fix — useDebtForm.ts mobile: DebtPayload interface no tenía campo debtType
+
+[x] IA Chat web — reescrito para tener contexto global histórico completo (últimos 12 meses)
+[x] IA Chat web — bug fix: limit=500 en expenses superaba Zod .max(100) → respuesta 400 → datos vacíos
+[x] IA Chat web — fix: reemplazado fetch paginado por 24 requests paralelos a endpoints de resumen mensual
+[x] IA Chat web — contexto incluye: resumen global dashboard, gastos por mes (12 meses), ingresos por mes (12 meses), transacciones recientes (limit=100), todos los préstamos/deudas/ahorros
+[x] IA Chat mobile — contexto global: usa Prisma directamente (take: 500 expenses, take: 300 incomes, take: 100 loans/debts) sin límites de paginación HTTP
+[x] IA Prompts — todos los prompts de IA escritos en español (Gemini responde en el idioma del prompt)
+[x] IA Resumen Mensual web — prompt reescrito completamente en español (era en inglés → respuesta en inglés)
+[x] IA Anomalías web — prompt reescrito en español; alertMessage generado en español
+[x] IA Anomalías mobile — bug fix: detect() bloqueaba al verificar clave de descarte en AsyncStorage
+[x] IA Anomalías mobile — reescrito useAIAnomalies.ts: detect() siempre llama a la API; dismiss() solo limpia caché y resetea estado; sin DISMISS_KEY
+[x] Mobile tabs — nuevo orden: Inicio, Gastos, Ingresos, Deudas, Préstamos, Ahorros, More
+[x] Mobile tabs — Ingresos promovido a tab directo (nueva pantalla apps/mobile/app/(tabs)/incomes.tsx sin botón Atrás)
+[x] Mobile tabs — Ahorros promovido a tab directo (restaurado como tab visible)
+[x] Mobile More menu — items: Tarjetas de crédito, Mis categorías, Asistente IA, Configuración (Ingresos y Ahorros removidos al ser tabs)
 ```
 
 ### Sprint 12 — QA y Deploy Web (Pendiente)
@@ -1329,7 +1346,28 @@ npm run dev --filter=api    # Solo backend (puerto 4000)
 [x] Sprint M7  — Ahorros (listado, detalle, contribuciones, IA asesoría)
 [x] Sprint M8  — Inteligencia Artificial completa (chat, resumen, estrategia, asesoría, anomalías)
 [x] Sprint M9  — Notificaciones Push (Expo Notifications + Expo Push Token)
-[x] Sprint M10 — Configuración + QA (M10.1–M10.6 ✅ | M10.7–M10.12 pendientes: testing + EAS Build)
+[x] Sprint M10 — Configuración + QA completado (M10.1–M10.6 ✅)
+```
+
+### Estructura de tabs (Expo Router v4)
+```
+Tab 1: index      → 🏠 Inicio
+Tab 2: expenses   → 💸 Gastos
+Tab 3: incomes    → 💰 Ingresos  (apps/mobile/app/(tabs)/incomes.tsx — sin botón Atrás)
+Tab 4: debts      → 💳 Deudas
+Tab 5: loans      → 🤝 Préstamos
+Tab 6: savings    → 🐷 Ahorros
+Tab 7: more       → ☰  Más
+```
+
+### Menú "Más" (More)
+```typescript
+const menuItems = [
+  { label: 'Tarjetas de crédito', emoji: '💳', route: '/credit-cards' },
+  { label: 'Mis categorías',      emoji: '🏷️', route: '/categories' },
+  { label: 'Asistente IA',        emoji: '🤖', route: '/ai-chat' },
+  { label: 'Configuración',       emoji: '⚙️', route: '/settings' },
+];
 ```
 
 ### Cambio importante en el backend para Fase 2
