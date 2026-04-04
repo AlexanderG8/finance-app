@@ -1,9 +1,9 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install && npx prisma generate && NODE_OPTIONS=--max-old-space-size=512 npm run build"
+buildCommand = "npm install && npx prisma generate"
 
 [deploy]
-startCommand = "npx prisma migrate deploy && node dist/app.js"
+startCommand = "npx prisma migrate deploy && npx tsx src/app.ts"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
