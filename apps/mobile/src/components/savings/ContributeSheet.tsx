@@ -13,6 +13,7 @@ import { SavingGoal } from '@/hooks/useSavings';
 import { Colors } from '@/constants/colors';
 import { formatCurrency } from '@/lib/utils';
 import { DatePickerField } from '@/components/ui/DatePickerField';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Solo BANK_TRANSFER y CASH permitidos para ahorros
 const PAYMENT_METHODS = [
@@ -46,6 +47,7 @@ export function ContributeSheet({
   goal,
   isSubmitting,
 }: ContributeSheetProps) {
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState<ContributeFormData>({
     amount: '',
     paymentMethod: 'CASH',
@@ -78,7 +80,7 @@ export function ContributeSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>
             <Text className="text-accent text-sm">Cancelar</Text>

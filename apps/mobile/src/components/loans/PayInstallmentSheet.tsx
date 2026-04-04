@@ -13,6 +13,7 @@ import { DatePickerField } from '@/components/ui/DatePickerField';
 import { LoanInstallment } from '@/hooks/useLoans';
 import { Colors } from '@/constants/colors';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PAYMENT_METHODS = [
   { value: 'CASH',          label: 'Efectivo' },
@@ -47,6 +48,7 @@ export function PayInstallmentSheet({
   installment,
   isSubmitting,
 }: PayInstallmentSheetProps) {
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState<PayInstallmentFormData>({
     amount: '',
     paymentMethod: 'CASH',
@@ -92,7 +94,7 @@ export function PayInstallmentSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>
             <Text className="text-accent text-sm">Cancelar</Text>

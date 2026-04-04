@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { Debt } from '@/hooks/useDebts';
 import { Colors } from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PAYMENT_METHODS = [
   { value: 'CASH',          label: 'Efectivo' },
@@ -47,6 +48,7 @@ interface DebtFormSheetProps {
 }
 
 export function DebtFormSheet({ visible, onClose, onSubmit, debt, isSubmitting }: DebtFormSheetProps) {
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState<DebtFormData>({
     creditorName: '',
     totalAmount: '',
@@ -103,7 +105,7 @@ export function DebtFormSheet({ visible, onClose, onSubmit, debt, isSubmitting }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>
             <Text className="text-accent text-sm">Cancelar</Text>

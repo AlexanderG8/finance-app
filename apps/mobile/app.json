@@ -52,6 +52,12 @@
         "projectId": "c6691388-45a1-4fc1-90cd-9f50c27c4ae7"
       }
     },
-    "owner": "xanderg8"
+    "owner": "xanderg8",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c6691388-45a1-4fc1-90cd-9f50c27c4ae7"
+    }
   }
 }

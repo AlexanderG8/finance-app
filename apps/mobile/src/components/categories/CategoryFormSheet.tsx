@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Colors } from '@/constants/colors';
 import { Category } from '@/hooks/useCategories';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PRESET_COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
@@ -33,6 +34,7 @@ export function CategoryFormSheet({
   category,
   isSubmitting,
 }: CategoryFormSheetProps) {
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]!);
@@ -63,7 +65,7 @@ export function CategoryFormSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>

@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from 'react';
 import { CreditCard, useCreditCardForm } from '@/hooks/useCreditCards';
 import { Colors } from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CURRENCIES = ['PEN', 'USD'];
 
@@ -42,6 +43,7 @@ function emptyForm(): CreditCardFormData {
 }
 
 export function CreditCardFormSheet({ visible, onClose, card, onSuccess }: CreditCardFormSheetProps) {
+  const insets = useSafeAreaInsets();
   const { isSubmitting, error, createCard, updateCard } = useCreditCardForm();
   const [form, setForm] = useState<CreditCardFormData>(emptyForm());
 
@@ -106,7 +108,7 @@ export function CreditCardFormSheet({ visible, onClose, card, onSuccess }: Credi
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>

@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { Income, IncomeSource } from '@/hooks/useIncomes';
 import { Colors } from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SOURCES: { value: IncomeSource; label: string; emoji: string }[] = [
   { value: 'SALARY',     label: 'Sueldo',    emoji: '💼' },
@@ -61,6 +62,7 @@ export function IncomeFormSheet({
   income,
   isSubmitting,
 }: IncomeFormSheetProps) {
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState<IncomeFormData>({
     description: '',
     amount: '',
@@ -117,7 +119,7 @@ export function IncomeFormSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>

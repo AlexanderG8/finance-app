@@ -15,6 +15,7 @@ import { Expense } from '@/hooks/useExpenses';
 import { CreditCard, useCreditCards } from '@/hooks/useCreditCards';
 import { Colors } from '@/constants/colors';
 import { formatCurrency } from '@/lib/utils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Efectivo' },
@@ -58,6 +59,7 @@ export function ExpenseFormSheet({
   expense,
   isSubmitting,
 }: ExpenseFormSheetProps) {
+  const insets = useSafeAreaInsets();
   const { cards, fetchCards } = useCreditCards();
   const [form, setForm] = useState<ExpenseFormData>({
     categoryId: '',
@@ -126,7 +128,7 @@ export function ExpenseFormSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-slate-50">
+      <View style={{ flex: 1, paddingTop: insets.top }} className="bg-slate-50">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-6 pb-4 bg-white border-b border-slate-100">
           <TouchableOpacity onPress={onClose}>
